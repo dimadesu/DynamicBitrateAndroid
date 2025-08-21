@@ -104,7 +104,14 @@ class BitrateForegroundService : Service() {
                         streamer?.setAudioSource(io.github.thibaultbee.streampack.core.elements.sources.audio.audiorecord.MicrophoneSourceFactory())
                         streamer?.open(UriMediaDescriptor(streamUrl))
                         streamer?.startStream()
-                        adaptiveBitrateManager?.start()
+                        // Pass the endpoint to AdaptiveBitrateManager for real SRT stats
+                        val endpoint = try {
+                            streamer?.javaClass?.getMethod("getEndpoint")?.invoke(streamer)
+                        } catch (e: Exception) {
+                            Log.w("BitrateService", "Could not get endpoint from streamer, using null", e)
+                            null
+                        }
+                        adaptiveBitrateManager?.start(endpoint)
                         startStatsBroadcasting()
                         Log.d("BitrateService", "Streaming started in foreground service")
                     } catch (e: Exception) {

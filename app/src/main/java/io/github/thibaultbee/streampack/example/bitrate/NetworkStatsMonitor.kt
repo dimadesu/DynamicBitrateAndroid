@@ -64,15 +64,19 @@ class NetworkStatsMonitor {
                     val stats = when {
                         srtSocket != null && isSimulating.not() -> {
                             try {
-                                val endpoint = srtSocket.javaClass.getMethod("getEndpoint").invoke(srtSocket)
-                                val metrics = endpoint.javaClass.getMethod("getMetrics").invoke(endpoint)
+                                // Use metrics getter method via reflection
+                                val metrics = srtSocket.javaClass.getMethod("getMetrics").invoke(srtSocket)
+                                Log.d(TAG, "Using real SRT stats from metrics property: $metrics")
                                 mapSrtMetricsToStats(metrics)
                             } catch (e: Exception) {
-                                Log.w(TAG, "Failed to get real SRT stats, falling back to simulation", e)
+                                Log.w(TAG, "Failed to get real SRT stats from metrics property, falling back to simulation", e)
                                 getSimulatedStats()
                             }
                         }
-                        else -> getSimulatedStats()
+                        else -> {
+                            Log.d(TAG, "Using simulated SRT stats")
+                            getSimulatedStats()
+                        }
                     }
                     _statsFlow.emit(stats)
                     checkConnectionTimeout(stats)
@@ -88,23 +92,35 @@ class NetworkStatsMonitor {
      * Map StreamPack SRT metrics to SrtStats
      */
     private fun mapSrtMetricsToStats(metrics: Any): SrtStats {
-        return try {
-            val rtt = metrics.javaClass.getDeclaredField("msRTT").get(metrics) as? Int ?: 0
-            val bufferSize = metrics.javaClass.getDeclaredField("pktSndBuf").get(metrics) as? Int ?: 0
-            val throughputMbps = metrics.javaClass.getDeclaredField("mbpsBandwidth").get(metrics) as? Double ?: 0.0
-            val packetLoss = metrics.javaClass.getDeclaredField("pktSndLoss").get(metrics) as? Double ?: 0.0
-            val ackCount = metrics.javaClass.getDeclaredField("pktRecvACKTotal").get(metrics) as? Long ?: 0L
-            SrtStats(
-                rtt = rtt,
-                bufferSize = bufferSize,
-                throughputMbps = throughputMbps,
-                packetLoss = packetLoss,
-                ackCount = ackCount
-            )
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to map SRT metrics, using simulated stats", e)
-            getSimulatedStats()
+        // Log all available fields for debugging
+        val fields = metrics.javaClass.declaredFields
+        for (field in fields) {
+            field.isAccessible = true
+            try {
+                val value = field.get(metrics)
+                Log.d(TAG, "SRT metrics field: ${field.name} = $value")
+            } catch (e: Exception) {
+                Log.w(TAG, "Cannot access SRT metrics field: ${field.name}", e)
+            }
         }
+
+        // Robustly access each field, fallback to 0/0.0/0L if not present
+        val rtt = try {
+            val f = metrics.javaClass.getDeclaredField("msRTT"); f.isAccessible = true; f.get(metrics) as? Int ?: 0
+        } catch (e: Exception) { Log.w(TAG, "msRTT not accessible", e); 0 }
+        val bufferSize = try {
+            val f = metrics.javaClass.getDeclaredField("pktSndBuf"); f.isAccessible = true; f.get(metrics) as? Int ?: 0
+        } catch (e: Exception) { Log.w(TAG, "pktSndBuf not accessible", e); 0 }
+        val throughputMbps = try {
+            val f = metrics.javaClass.getDeclaredField("mbpsBandwidth"); f.isAccessible = true; f.get(metrics) as? Double ?: 0.0
+        } catch (e: Exception) { Log.w(TAG, "mbpsBandwidth not accessible", e); 0.0 }
+        val packetLoss = try {
+            val f = metrics.javaClass.getDeclaredField("pktSndLoss"); f.isAccessible = true; f.get(metrics) as? Double ?: 0.0
+        } catch (e: Exception) { Log.w(TAG, "pktSndLoss not accessible", e); 0.0 }
+        val ackCount = try {
+            val f = metrics.javaClass.getDeclaredField("pktRecvACKTotal"); f.isAccessible = true; f.get(metrics) as? Long ?: 0L
+        } catch (e: Exception) { Log.w(TAG, "pktRecvACKTotal not accessible", e); 0L }
+        return SrtStats(rtt, bufferSize, throughputMbps, packetLoss, ackCount)
     }
     
     /**

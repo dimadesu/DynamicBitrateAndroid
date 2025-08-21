@@ -94,20 +94,23 @@ class AdaptiveBitrateManager {
             Log.w(TAG, "Adaptive bitrate already started")
             return
         }
-        
+
+        // Always disable simulation for real streaming
+        networkMonitor.disableSimulation()
+
         this.srtSocket = srtSocket
         isEnabled = true
         _isActive.value = true
-        
+
         // Start network monitoring
         networkMonitor.startMonitoring(srtSocket)
-        
+
         // Start bitrate controller
         bitrateController.startMonitoring()
-        
+
         // Start processing network stats
         startNetworkStatsProcessing()
-        
+
         Log.d(TAG, "Adaptive bitrate control started")
     }
     
