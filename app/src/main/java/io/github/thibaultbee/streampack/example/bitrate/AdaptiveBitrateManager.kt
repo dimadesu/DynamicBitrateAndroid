@@ -45,6 +45,17 @@ class AdaptiveBitrateManager {
     // Bitrate state is now managed only by DynamicBitrateController
     private val _networkQuality = MutableStateFlow(NetworkStatsMonitor.ConnectionQuality.GOOD)
     val networkQuality: StateFlow<NetworkStatsMonitor.ConnectionQuality> = _networkQuality.asStateFlow()
+
+    // Moblin-style smoothing and jitter
+    private var bufferSizeAvg: Double = 0.0
+    private var bufferSizeJitter: Double = 0.0
+    private var prevBufferSize: Int = 0
+    private var rttAvg: Double = 0.0
+    private var rttAvgDelta: Double = 0.0
+    private var prevRtt: Int = 300
+    private var rttMin: Double = 200.0
+    private var rttJitter: Double = 0.0
+    private var throughput: Double = 0.0
     
     /**
      * Initialize the adaptive bitrate manager with a streamer
@@ -158,19 +169,36 @@ class AdaptiveBitrateManager {
     private fun startNetworkStatsProcessing() {
         scope.launch {
             networkMonitor.statsFlow.collect { srtStats ->
-                // Convert SRT stats to bitrate controller format
-                val networkStats = DynamicBitrateController.NetworkStats(
-                    rtt = srtStats.msRTT,
-                    bufferSize = srtStats.pktSndBuf,
-                    throughput = srtStats.mbpsBandwidth,
-                    packetLoss = srtStats.pktSndLoss.toDouble()
-                )
-                // If getConnectionQuality and getStatsSummary are not available, skip or replace with direct logging
-                // Update network quality state (fallback: always GOOD)
-                _networkQuality.value = NetworkStatsMonitor.ConnectionQuality.GOOD
-                // Log network statistics periodically
+                // Moblin-style smoothing and jitter
+                val pktSndBufDouble = (srtStats.pktSndBuf as Number).toDouble()
+                bufferSizeAvg = bufferSizeAvg * 0.99 + pktSndBufDouble * 0.01
+                bufferSizeJitter = bufferSizeJitter * 0.99
+                val deltaBufferSize = pktSndBufDouble - prevBufferSize.toDouble()
+                if (deltaBufferSize > bufferSizeJitter) bufferSizeJitter = deltaBufferSize
+                prevBufferSize = pktSndBufDouble.toInt()
+
+                val msRTTDouble = (srtStats.msRTT as Number).toDouble()
+                if (rttAvg == 0.0) {
+                    rttAvg = msRTTDouble
+                } else {
+                    rttAvg = rttAvg * 0.99 + 0.01 * msRTTDouble
+                }
+                val deltaRtt = srtStats.msRTT - prevRtt.toDouble()
+                rttAvgDelta = rttAvgDelta * 0.8 + deltaRtt * 0.2
+                prevRtt = srtStats.msRTT.toInt()
+                rttMin *= 1.001
+                val msRTTDoubleForMin = (srtStats.msRTT as Number).toDouble()
+                if (msRTTDoubleForMin != 100.0 && msRTTDoubleForMin < rttMin && rttAvgDelta < 1.0) {
+                    rttMin = msRTTDoubleForMin
+                }
+                rttJitter = rttJitter * 0.99
+                if (deltaRtt > rttJitter) rttJitter = deltaRtt
+
+                throughput = throughput * 0.97 + srtStats.mbpsBandwidth.toDouble() * 0.03
+
+                // Log Moblin-style stats periodically
                 if (System.currentTimeMillis() % 1000 < 100) {
-                    Log.v(TAG, "SRT Stats: RTT=${srtStats.msRTT}, Buf=${srtStats.pktSndBuf}, BW=${srtStats.mbpsBandwidth}, Loss=${srtStats.pktSndLoss}")
+                    Log.v(TAG, "Moblin SRT Stats: RTT=${srtStats.msRTT}, Buf=${srtStats.pktSndBuf}, AvgBuf=${bufferSizeAvg.toInt()}, JitterBuf=${bufferSizeJitter.toInt()}, RTTAvg=${rttAvg.toInt()}, RTTJitter=${rttJitter.toInt()}, RTTMin=${rttMin.toInt()}, BW=${throughput}")
                 }
             }
         }
