@@ -19,11 +19,88 @@ class NetworkStatsMonitor {
     
     // Statistics data class
     data class SrtStats(
-        val rtt: Int,                    // Round-trip time in ms
-        val bufferSize: Int,             // Send buffer size in bytes
-        val throughputMbps: Double,      // Throughput in Mbps
-        val packetLoss: Double,          // Packet loss percentage
-        val ackCount: Long,              // Total ACK packets received
+        val msTimeStamp: Long = 0L,
+        val pktSentTotal: Long = 0L,
+        val pktRecvTotal: Long = 0L,
+        val pktSndLossTotal: Long = 0L,
+        val pktRcvLossTotal: Long = 0L,
+        val pktRetransTotal: Long = 0L,
+        val pktSentACKTotal: Long = 0L,
+        val pktRecvACKTotal: Long = 0L,
+        val pktSentNAKTotal: Long = 0L,
+        val pktRecvNAKTotal: Long = 0L,
+        val usSndDurationTotal: Long = 0L,
+        val pktSndDropTotal: Long = 0L,
+        val pktRcvDropTotal: Long = 0L,
+        val pktRcvUndecryptTotal: Long = 0L,
+        val byteSentTotal: Long = 0L,
+        val byteRecvTotal: Long = 0L,
+        val byteRcvLossTotal: Long = 0L,
+        val byteRetransTotal: Long = 0L,
+        val byteSndDropTotal: Long = 0L,
+        val byteRcvDropTotal: Long = 0L,
+        val byteRcvUndecryptTotal: Long = 0L,
+        val pktSent: Long = 0L,
+        val pktRecv: Long = 0L,
+        val pktSndLoss: Long = 0L,
+        val pktRcvLoss: Long = 0L,
+        val pktRetrans: Long = 0L,
+        val pktRcvRetrans: Long = 0L,
+        val pktSentACK: Long = 0L,
+        val pktRecvACK: Long = 0L,
+        val pktSentNAK: Long = 0L,
+        val pktRecvNAK: Long = 0L,
+        val mbpsSendRate: Double = 0.0,
+        val mbpsRecvRate: Double = 0.0,
+        val usSndDuration: Long = 0L,
+        val pktReorderDistance: Int = 0,
+        val pktRcvAvgBelatedTime: Int = 0,
+        val pktRcvBelated: Int = 0,
+        val pktSndDrop: Long = 0L,
+        val pktRcvDrop: Long = 0L,
+        val pktRcvUndecrypt: Long = 0L,
+        val byteSent: Long = 0L,
+        val byteRecv: Long = 0L,
+        val byteRcvLoss: Long = 0L,
+        val byteRetrans: Long = 0L,
+        val byteSndDrop: Long = 0L,
+        val byteRcvDrop: Long = 0L,
+        val byteRcvUndecrypt: Long = 0L,
+        val usPktSndPeriod: Long = 0L,
+        val pktFlowWindow: Int = 0,
+        val pktCongestionWindow: Int = 0,
+        val pktFlightSize: Int = 0,
+        val msRTT: Int = 0,
+        val mbpsBandwidth: Double = 0.0,
+        val byteAvailSndBuf: Long = 0L,
+        val byteAvailRcvBuf: Long = 0L,
+        val mbpsMaxBW: Double = 0.0,
+        val byteMSS: Long = 0L,
+        val pktSndBuf: Int = 0,
+        val byteSndBuf: Int = 0,
+        val msSndBuf: Int = 0,
+        val msSndTsbPdDelay: Int = 0,
+        val pktRcvBuf: Int = 0,
+        val byteRcvBuf: Int = 0,
+        val msRcvBuf: Int = 0,
+        val msRcvTsbPdDelay: Int = 0,
+        val pktSndFilterExtraTotal: Long = 0L,
+        val pktRcvFilterExtraTotal: Long = 0L,
+        val pktRcvFilterSupplyTotal: Long = 0L,
+        val pktRcvFilterLossTotal: Long = 0L,
+        val pktSndFilterExtra: Long = 0L,
+        val pktRcvFilterExtra: Long = 0L,
+        val pktRcvFilterSupply: Long = 0L,
+        val pktRcvFilterLoss: Long = 0L,
+        val pktReorderTolerance: Int = 0,
+        val pktSentUniqueTotal: Long = 0L,
+        val pktRecvUniqueTotal: Long = 0L,
+        val byteSentUniqueTotal: Long = 0L,
+        val byteRecvUniqueTotal: Long = 0L,
+        val pktSentUnique: Long = 0L,
+        val pktRecvUnique: Long = 0L,
+        val byteSentUnique: Long = 0L,
+        val byteRecvUnique: Long = 0L,
         val timestamp: Long = System.currentTimeMillis()
     )
     
@@ -36,15 +113,14 @@ class NetworkStatsMonitor {
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     
     // Last ACK tracking for timeout detection
-    private var lastAckCount: Long = 0
-    private var lastAckTimestamp: Long = 0
+    // Track last ACK count and timestamp for timeout detection
+    private var lastAckCount: Long = 0L
+    private var lastAckTimestamp: Long = 0L
     
-    // Simulated connection state for demonstration
-    private var isSimulating = false
-    private var simulatedConnectionQuality = ConnectionQuality.GOOD
+    // ...existing code...
     
     enum class ConnectionQuality {
-        EXCELLENT, GOOD, FAIR, POOR, CRITICAL
+        GOOD, FAIR, POOR
     }
     
     /**
@@ -61,22 +137,14 @@ class NetworkStatsMonitor {
         monitoringJob = scope.launch {
             while (isActive) {
                 try {
-                    val stats = when {
-                        srtSocket != null && isSimulating.not() -> {
-                            try {
-                                // Use metrics getter method via reflection
-                                val metrics = srtSocket.javaClass.getMethod("getMetrics").invoke(srtSocket)
-                                Log.d(TAG, "Using real SRT stats from metrics property: $metrics")
-                                mapSrtMetricsToStats(metrics)
-                            } catch (e: Exception) {
-                                Log.w(TAG, "Failed to get real SRT stats from metrics property, falling back to simulation", e)
-                                getSimulatedStats()
-                            }
-                        }
-                        else -> {
-                            Log.d(TAG, "Using simulated SRT stats")
-                            getSimulatedStats()
-                        }
+                    val stats = try {
+                        // Use metrics getter method via reflection
+                        val metrics = srtSocket?.javaClass?.getMethod("getMetrics")?.invoke(srtSocket)
+                        Log.d(TAG, "Using real SRT stats from metrics property: $metrics")
+                        mapSrtMetricsToStats(metrics!!)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to get real SRT stats from metrics property", e)
+                        SrtStats() // Emit empty stats on error
                     }
                     _statsFlow.emit(stats)
                     checkConnectionTimeout(stats)
@@ -104,23 +172,97 @@ class NetworkStatsMonitor {
             }
         }
 
-        // Robustly access each field, fallback to 0/0.0/0L if not present
-        val rtt = try {
-            val f = metrics.javaClass.getDeclaredField("msRTT"); f.isAccessible = true; f.get(metrics) as? Int ?: 0
-        } catch (e: Exception) { Log.w(TAG, "msRTT not accessible", e); 0 }
-        val bufferSize = try {
-            val f = metrics.javaClass.getDeclaredField("pktSndBuf"); f.isAccessible = true; f.get(metrics) as? Int ?: 0
-        } catch (e: Exception) { Log.w(TAG, "pktSndBuf not accessible", e); 0 }
-        val throughputMbps = try {
-            val f = metrics.javaClass.getDeclaredField("mbpsBandwidth"); f.isAccessible = true; f.get(metrics) as? Double ?: 0.0
-        } catch (e: Exception) { Log.w(TAG, "mbpsBandwidth not accessible", e); 0.0 }
-        val packetLoss = try {
-            val f = metrics.javaClass.getDeclaredField("pktSndLoss"); f.isAccessible = true; f.get(metrics) as? Double ?: 0.0
-        } catch (e: Exception) { Log.w(TAG, "pktSndLoss not accessible", e); 0.0 }
-        val ackCount = try {
-            val f = metrics.javaClass.getDeclaredField("pktRecvACKTotal"); f.isAccessible = true; f.get(metrics) as? Long ?: 0L
-        } catch (e: Exception) { Log.w(TAG, "pktRecvACKTotal not accessible", e); 0L }
-        return SrtStats(rtt, bufferSize, throughputMbps, packetLoss, ackCount)
+        // Helper to get field value or default
+        fun <T> getField(name: String, default: T): T {
+            return try {
+                val f = metrics.javaClass.getDeclaredField(name); f.isAccessible = true; f.get(metrics) as? T ?: default
+            } catch (e: Exception) { Log.w(TAG, "$name not accessible", e); default }
+        }
+        return SrtStats(
+            msTimeStamp = getField("msTimeStamp", 0L),
+            pktSentTotal = getField("pktSentTotal", 0L),
+            pktRecvTotal = getField("pktRecvTotal", 0L),
+            pktSndLossTotal = getField("pktSndLossTotal", 0L),
+            pktRcvLossTotal = getField("pktRcvLossTotal", 0L),
+            pktRetransTotal = getField("pktRetransTotal", 0L),
+            pktSentACKTotal = getField("pktSentACKTotal", 0L),
+            pktRecvACKTotal = getField("pktRecvACKTotal", 0L),
+            pktSentNAKTotal = getField("pktSentNAKTotal", 0L),
+            pktRecvNAKTotal = getField("pktRecvNAKTotal", 0L),
+            usSndDurationTotal = getField("usSndDurationTotal", 0L),
+            pktSndDropTotal = getField("pktSndDropTotal", 0L),
+            pktRcvDropTotal = getField("pktRcvDropTotal", 0L),
+            pktRcvUndecryptTotal = getField("pktRcvUndecryptTotal", 0L),
+            byteSentTotal = getField("byteSentTotal", 0L),
+            byteRecvTotal = getField("byteRecvTotal", 0L),
+            byteRcvLossTotal = getField("byteRcvLossTotal", 0L),
+            byteRetransTotal = getField("byteRetransTotal", 0L),
+            byteSndDropTotal = getField("byteSndDropTotal", 0L),
+            byteRcvDropTotal = getField("byteRcvDropTotal", 0L),
+            byteRcvUndecryptTotal = getField("byteRcvUndecryptTotal", 0L),
+            pktSent = getField("pktSent", 0L),
+            pktRecv = getField("pktRecv", 0L),
+            pktSndLoss = getField("pktSndLoss", 0L),
+            pktRcvLoss = getField("pktRcvLoss", 0L),
+            pktRetrans = getField("pktRetrans", 0L),
+            pktRcvRetrans = getField("pktRcvRetrans", 0L),
+            pktSentACK = getField("pktSentACK", 0L),
+            pktRecvACK = getField("pktRecvACK", 0L),
+            pktSentNAK = getField("pktSentNAK", 0L),
+            pktRecvNAK = getField("pktRecvNAK", 0L),
+            mbpsSendRate = getField("mbpsSendRate", 0.0),
+            mbpsRecvRate = getField("mbpsRecvRate", 0.0),
+            usSndDuration = getField("usSndDuration", 0L),
+            pktReorderDistance = getField("pktReorderDistance", 0),
+            pktRcvAvgBelatedTime = getField("pktRcvAvgBelatedTime", 0),
+            pktRcvBelated = getField("pktRcvBelated", 0),
+            pktSndDrop = getField("pktSndDrop", 0L),
+            pktRcvDrop = getField("pktRcvDrop", 0L),
+            pktRcvUndecrypt = getField("pktRcvUndecrypt", 0L),
+            byteSent = getField("byteSent", 0L),
+            byteRecv = getField("byteRecv", 0L),
+            byteRcvLoss = getField("byteRcvLoss", 0L),
+            byteRetrans = getField("byteRetrans", 0L),
+            byteSndDrop = getField("byteSndDrop", 0L),
+            byteRcvDrop = getField("byteRcvDrop", 0L),
+            byteRcvUndecrypt = getField("byteRcvUndecrypt", 0L),
+            usPktSndPeriod = getField("usPktSndPeriod", 0L),
+            pktFlowWindow = getField("pktFlowWindow", 0),
+            pktCongestionWindow = getField("pktCongestionWindow", 0),
+            pktFlightSize = getField("pktFlightSize", 0),
+            msRTT = getField("msRTT", 0),
+            mbpsBandwidth = getField("mbpsBandwidth", 0.0),
+            byteAvailSndBuf = getField("byteAvailSndBuf", 0L),
+            byteAvailRcvBuf = getField("byteAvailRcvBuf", 0L),
+            mbpsMaxBW = getField("mbpsMaxBW", 0.0),
+            byteMSS = getField("byteMSS", 0L),
+            pktSndBuf = getField("pktSndBuf", 0),
+            byteSndBuf = getField("byteSndBuf", 0),
+            msSndBuf = getField("msSndBuf", 0),
+            msSndTsbPdDelay = getField("msSndTsbPdDelay", 0),
+            pktRcvBuf = getField("pktRcvBuf", 0),
+            byteRcvBuf = getField("byteRcvBuf", 0),
+            msRcvBuf = getField("msRcvBuf", 0),
+            msRcvTsbPdDelay = getField("msRcvTsbPdDelay", 0),
+            pktSndFilterExtraTotal = getField("pktSndFilterExtraTotal", 0L),
+            pktRcvFilterExtraTotal = getField("pktRcvFilterExtraTotal", 0L),
+            pktRcvFilterSupplyTotal = getField("pktRcvFilterSupplyTotal", 0L),
+            pktRcvFilterLossTotal = getField("pktRcvFilterLossTotal", 0L),
+            pktSndFilterExtra = getField("pktSndFilterExtra", 0L),
+            pktRcvFilterExtra = getField("pktRcvFilterExtra", 0L),
+            pktRcvFilterSupply = getField("pktRcvFilterSupply", 0L),
+            pktRcvFilterLoss = getField("pktRcvFilterLoss", 0L),
+            pktReorderTolerance = getField("pktReorderTolerance", 0),
+            pktSentUniqueTotal = getField("pktSentUniqueTotal", 0L),
+            pktRecvUniqueTotal = getField("pktRecvUniqueTotal", 0L),
+            byteSentUniqueTotal = getField("byteSentUniqueTotal", 0L),
+            byteRecvUniqueTotal = getField("byteRecvUniqueTotal", 0L),
+            pktSentUnique = getField("pktSentUnique", 0L),
+            pktRecvUnique = getField("pktRecvUnique", 0L),
+            byteSentUnique = getField("byteSentUnique", 0L),
+            byteRecvUnique = getField("byteRecvUnique", 0L),
+            timestamp = System.currentTimeMillis()
+        )
     }
     
     /**
@@ -133,95 +275,21 @@ class NetworkStatsMonitor {
         scope.cancel()
     }
     
-    /**
-     * Enable simulation mode for testing without actual SRT connection
-     */
-    fun enableSimulation(connectionQuality: ConnectionQuality = ConnectionQuality.GOOD) {
-        isSimulating = true
-        simulatedConnectionQuality = connectionQuality
-        Log.d(TAG, "Simulation mode enabled with quality: $connectionQuality")
-    }
-    
-    /**
-     * Disable simulation mode
-     */
-    fun disableSimulation() {
-        isSimulating = false
-        Log.d(TAG, "Simulation mode disabled")
-    }
-    
-    /**
-     * Update simulated connection quality for testing
-     */
-    fun updateSimulatedQuality(quality: ConnectionQuality) {
-        simulatedConnectionQuality = quality
-        Log.d(TAG, "Simulated connection quality updated to: $quality")
-    }
-    
-    /**
-     * Get simulated statistics for testing purposes
-     */
-    private fun getSimulatedStats(): SrtStats {
-        val baseTime = System.currentTimeMillis()
-        val random = kotlin.random.Random(baseTime)
-        
-        return when (simulatedConnectionQuality) {
-            ConnectionQuality.EXCELLENT -> SrtStats(
-                rtt = random.nextInt(10, 30),
-                bufferSize = random.nextInt(0, 50),
-                throughputMbps = random.nextDouble(8.0, 10.0),
-                packetLoss = random.nextDouble(0.0, 0.1),
-                ackCount = lastAckCount + random.nextLong(1, 5)
-            )
-            
-            ConnectionQuality.GOOD -> SrtStats(
-                rtt = random.nextInt(30, 80),
-                bufferSize = random.nextInt(50, 200),
-                throughputMbps = random.nextDouble(5.0, 8.0),
-                packetLoss = random.nextDouble(0.1, 0.5),
-                ackCount = lastAckCount + random.nextLong(1, 3)
-            )
-            
-            ConnectionQuality.FAIR -> SrtStats(
-                rtt = random.nextInt(80, 150),
-                bufferSize = random.nextInt(200, 500),
-                throughputMbps = random.nextDouble(3.0, 5.0),
-                packetLoss = random.nextDouble(0.5, 1.5),
-                ackCount = lastAckCount + random.nextLong(0, 2)
-            )
-            
-            ConnectionQuality.POOR -> SrtStats(
-                rtt = random.nextInt(150, 300),
-                bufferSize = random.nextInt(500, 1000),
-                throughputMbps = random.nextDouble(1.0, 3.0),
-                packetLoss = random.nextDouble(1.5, 5.0),
-                ackCount = lastAckCount + random.nextLong(0, 1)
-            )
-            
-            ConnectionQuality.CRITICAL -> SrtStats(
-                rtt = random.nextInt(300, 800),
-                bufferSize = random.nextInt(1000, 2000),
-                throughputMbps = random.nextDouble(0.1, 1.0),
-                packetLoss = random.nextDouble(5.0, 15.0),
-                ackCount = lastAckCount  // No ACKs in critical state
-            )
-        }.also {
-            lastAckCount = it.ackCount
-        }
-    }
+    // ...existing code...
+//    }
     
     /**
      * Check for connection timeout based on ACK reception
      * Implements the timeout logic from belacoder.c
      */
-    private fun checkConnectionTimeout(stats: SrtStats) {
+    private fun checkConnectionTimeout(stats: NetworkStatsMonitor.SrtStats) {
         val currentTime = System.currentTimeMillis()
         val ackTimeout = 6000L // 6 seconds as in belacoder.c
         
         // Update last ACK timestamp if we received new ACKs
-        if (stats.ackCount != lastAckCount) {
+        if (stats.pktRecvACKTotal != lastAckCount) {
             lastAckTimestamp = currentTime
-            lastAckCount = stats.ackCount
+            lastAckCount = stats.pktRecvACKTotal
         }
         
         // Check for timeout if we have received ACKs before
@@ -253,8 +321,9 @@ class NetworkStatsMonitor {
         }
         */
         
-        // For now, return simulated stats
-        return getSimulatedStats()
+    // TODO: Implement actual SRT statistics gathering
+    // For now, return empty stats
+    return SrtStats()
     }
     
     /**
@@ -262,11 +331,9 @@ class NetworkStatsMonitor {
      */
     fun getConnectionQuality(stats: SrtStats): ConnectionQuality {
         return when {
-            stats.rtt <= 50 && stats.packetLoss <= 0.5 -> ConnectionQuality.EXCELLENT
-            stats.rtt <= 100 && stats.packetLoss <= 1.0 -> ConnectionQuality.GOOD
-            stats.rtt <= 200 && stats.packetLoss <= 3.0 -> ConnectionQuality.FAIR
-            stats.rtt <= 400 && stats.packetLoss <= 8.0 -> ConnectionQuality.POOR
-            else -> ConnectionQuality.CRITICAL
+            stats.msRTT <= 100 && stats.pktSndLoss <= 1.0 -> ConnectionQuality.GOOD
+            stats.msRTT <= 200 && stats.pktSndLoss <= 3.0 -> ConnectionQuality.FAIR
+            else -> ConnectionQuality.POOR
         }
     }
     
@@ -275,9 +342,9 @@ class NetworkStatsMonitor {
      */
     fun getStatsSummary(stats: SrtStats): String {
         val quality = getConnectionQuality(stats)
-        return "RTT: ${stats.rtt}ms, Buffer: ${stats.bufferSize}B, " +
-                "Throughput: ${"%.1f".format(stats.throughputMbps)}Mbps, " +
-                "Loss: ${"%.2f".format(stats.packetLoss)}%, Quality: $quality"
+    return "RTT: ${stats.msRTT}ms, Buffer: ${stats.pktSndBuf}B, " +
+        "Throughput: ${"%.1f".format(stats.mbpsBandwidth)}Mbps, " +
+        "Loss: ${stats.pktSndLoss}%, Quality: $quality"
     }
     
     /**

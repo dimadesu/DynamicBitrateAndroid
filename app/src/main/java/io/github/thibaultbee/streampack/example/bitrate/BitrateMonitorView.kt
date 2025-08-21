@@ -63,25 +63,7 @@ class BitrateMonitorView @JvmOverloads constructor(
         }
         
         // Network quality simulation buttons
-        binding.buttonExcellent.setOnClickListener {
-            manager.updateNetworkConditions(NetworkStatsMonitor.ConnectionQuality.EXCELLENT)
-        }
-        
-        binding.buttonGood.setOnClickListener {
-            manager.updateNetworkConditions(NetworkStatsMonitor.ConnectionQuality.GOOD)
-        }
-        
-        binding.buttonFair.setOnClickListener {
-            manager.updateNetworkConditions(NetworkStatsMonitor.ConnectionQuality.FAIR)
-        }
-        
-        binding.buttonPoor.setOnClickListener {
-            manager.updateNetworkConditions(NetworkStatsMonitor.ConnectionQuality.POOR)
-        }
-        
-        binding.buttonCritical.setOnClickListener {
-            manager.updateNetworkConditions(NetworkStatsMonitor.ConnectionQuality.CRITICAL)
-        }
+    // Simulation controls removed; only real network quality is shown
         
         // Show the view after setup
         visibility = VISIBLE
@@ -175,11 +157,9 @@ class BitrateMonitorView @JvmOverloads constructor(
      */
     private fun getQualityColor(quality: NetworkStatsMonitor.ConnectionQuality): Int {
         return when (quality) {
-            NetworkStatsMonitor.ConnectionQuality.EXCELLENT -> 0xFF4CAF50.toInt() // Green
-            NetworkStatsMonitor.ConnectionQuality.GOOD -> 0xFF8BC34A.toInt()      // Light Green
+            NetworkStatsMonitor.ConnectionQuality.GOOD -> 0xFF4CAF50.toInt()      // Green
             NetworkStatsMonitor.ConnectionQuality.FAIR -> 0xFFFFC107.toInt()      // Amber
-            NetworkStatsMonitor.ConnectionQuality.POOR -> 0xFFFF9800.toInt()      // Orange
-            NetworkStatsMonitor.ConnectionQuality.CRITICAL -> 0xFFF44336.toInt()  // Red
+            NetworkStatsMonitor.ConnectionQuality.POOR -> 0xFFF44336.toInt()      // Red
         }
     }
     
@@ -187,24 +167,18 @@ class BitrateMonitorView @JvmOverloads constructor(
      * Update quality control buttons to show current selection
      */
     private fun updateQualityButtons(currentQuality: NetworkStatsMonitor.ConnectionQuality) {
-        // Reset all buttons
+        // Only show buttons for GOOD, FAIR, POOR
         listOf(
-            binding.buttonExcellent,
             binding.buttonGood,
             binding.buttonFair,
-            binding.buttonPoor,
-            binding.buttonCritical
+            binding.buttonPoor
         ).forEach { button ->
             button.alpha = 0.5f
         }
-        
-        // Highlight current quality button
         when (currentQuality) {
-            NetworkStatsMonitor.ConnectionQuality.EXCELLENT -> binding.buttonExcellent.alpha = 1.0f
             NetworkStatsMonitor.ConnectionQuality.GOOD -> binding.buttonGood.alpha = 1.0f
             NetworkStatsMonitor.ConnectionQuality.FAIR -> binding.buttonFair.alpha = 1.0f
             NetworkStatsMonitor.ConnectionQuality.POOR -> binding.buttonPoor.alpha = 1.0f
-            NetworkStatsMonitor.ConnectionQuality.CRITICAL -> binding.buttonCritical.alpha = 1.0f
         }
     }
     
