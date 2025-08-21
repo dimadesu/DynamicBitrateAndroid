@@ -57,16 +57,15 @@ class NetworkStatsMonitor {
      */
     fun startMonitoring(srtSocket: Any? = null) {
         Log.d(TAG, "Starting SRT statistics monitoring")
+        monitoringJob?.cancel()
         monitoringJob = scope.launch {
             while (isActive) {
                 try {
                     val stats = when {
                         srtSocket != null && isSimulating.not() -> {
-                            // Try to get real SRT stats from streamer.endpoint.metrics
                             try {
                                 val endpoint = srtSocket.javaClass.getMethod("getEndpoint").invoke(srtSocket)
                                 val metrics = endpoint.javaClass.getMethod("getMetrics").invoke(endpoint)
-                                // If metrics is of type io.github.thibaultbee.srtdroid.core.models.Stats, map to SrtStats
                                 mapSrtMetricsToStats(metrics)
                             } catch (e: Exception) {
                                 Log.w(TAG, "Failed to get real SRT stats, falling back to simulation", e)
@@ -114,6 +113,8 @@ class NetworkStatsMonitor {
     fun stopMonitoring() {
         Log.d(TAG, "Stopping SRT statistics monitoring")
         monitoringJob?.cancel()
+        monitoringJob = null
+        scope.cancel()
     }
     
     /**

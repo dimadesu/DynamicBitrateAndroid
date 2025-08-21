@@ -32,6 +32,7 @@ import io.github.thibaultbee.streampack.example.utils.toast
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -307,9 +308,30 @@ class MainActivity : AppCompatActivity() {
     
     override fun onDestroy() {
         super.onDestroy()
-        
-        // Release adaptive bitrate resources
-        adaptiveBitrateManager.release()
+        Log.d(TAG, "onDestroy called: beginning resource cleanup")
+        lifecycleScope.launch {
+            try {
+                Log.d(TAG, "Stopping preview before releasing streamer (await suspend)")
+                binding.preview.stopPreview() // This is a suspend function, so it will be awaited
+                Log.d(TAG, "Preview stopped successfully (suspend)")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to stop preview: ${e.message}", e)
+            }
+            try {
+                Log.d(TAG, "Releasing streamer after preview stopped")
+                streamer.release()
+                Log.d(TAG, "Streamer released successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to release streamer: ${e.message}", e)
+            }
+            try {
+                Log.d(TAG, "Releasing adaptive bitrate resources")
+                adaptiveBitrateManager.release()
+                Log.d(TAG, "Adaptive bitrate resources released successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to release adaptive bitrate resources: ${e.message}", e)
+            }
+        }
     }
 
     companion object {
