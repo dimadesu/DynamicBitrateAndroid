@@ -127,7 +127,9 @@ class MainActivity : AppCompatActivity() {
                             /**
                              * For SRT, use srt://my.server.url:9998?streamid=myStreamId&passphrase=myPassphrase
                              */
+                            // TODO
                             streamer.startStream("srt://localhost:8890?streamid=publish:mystream")
+                            //streamer.startStream("srt://localhost:6000")
                             
                             // Start adaptive bitrate control when streaming begins
                             adaptiveBitrateManager.start()
@@ -296,10 +298,10 @@ class MainActivity : AppCompatActivity() {
         
         // Configure with reasonable defaults for mobile streaming
         adaptiveBitrateManager.configure(
-            minBitrate = 500_000,    // 500 Kbps minimum
-            maxBitrate = 4_000_000,  // 4 Mbps maximum for mobile
+            minBitrate = 100_000,    // 100 Kbps minimum
+            maxBitrate = 6_000_000,  // 6 Mbps maximum for mobile
             srtLatency = 2000,       // 2 second latency
-            enableSimulation = true  // Enable simulation for testing
+            enableSimulation = false  // Enable simulation for testing
         )
         
         // Setup bitrate monitor view
