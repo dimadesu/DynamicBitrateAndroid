@@ -1,10 +1,6 @@
 package io.github.thibaultbee.streampack.example.bitrate
 
-import android.media.AudioFormat
-import android.media.MediaFormat
 import android.util.Log
-import android.util.Size
-import io.github.thibaultbee.streampack.core.streamers.single.AudioConfig
 import io.github.thibaultbee.streampack.core.streamers.single.SingleStreamer
 import io.github.thibaultbee.streampack.core.streamers.single.VideoConfig
 import io.github.thibaultbee.streampack.core.streamers.dual.DualStreamer
@@ -16,6 +12,10 @@ import kotlinx.coroutines.flow.*
  * Applies the belacoder.c adaptive bitrate algorithm to StreamPack streamers
  */
 class AdaptiveBitrateManager {
+    // Cache last used video config for dynamic bitrate changes
+
+    // Throttle bitrate changes: only allow every 5 seconds
+    private var lastBitrateUpdateTime: Long = 0L
     // Cache last used video config for dynamic bitrate changes
     var lastVideoConfig: VideoConfig? = null
     
@@ -52,6 +52,14 @@ class AdaptiveBitrateManager {
     fun initialize(streamer: SingleStreamer) {
         this.singleStreamer = streamer
         this.dualStreamer = null
+        // Initialize lastVideoConfig from streamer's current config if available
+        val config = streamer.videoConfigFlow.value
+        if (config != null) {
+            lastVideoConfig = config
+            Log.d(TAG, "lastVideoConfig initialized from streamer's config")
+        } else {
+            Log.w(TAG, "Streamer videoConfigFlow.value is null at initialization")
+        }
         setupBitrateController()
         Log.d(TAG, "Initialized with SingleStreamer")
     }
@@ -172,6 +180,12 @@ class AdaptiveBitrateManager {
      * Apply the new bitrate to the active streamer
      */
     private suspend fun applyBitrateToStreamer(bitrate: Int) {
+        val now = System.currentTimeMillis()
+        if (now - lastBitrateUpdateTime < 5000) {
+            Log.d(TAG, "Bitrate update throttled: only allowed every 5 seconds")
+            return
+        }
+        lastBitrateUpdateTime = now
         try {
             when {
                 singleStreamer != null -> {
@@ -197,20 +211,40 @@ class AdaptiveBitrateManager {
     private suspend fun updateSingleStreamerBitrate(bitrate: Int) {
         singleStreamer?.let { streamer ->
             try {
-                // Only update video bitrate while streaming
-                if (lastVideoConfig != null) {
-                    val newVideoConfig = VideoConfig(
-                        mimeType = lastVideoConfig!!.mimeType,
-                        resolution = lastVideoConfig!!.resolution,
-                        fps = lastVideoConfig!!.fps,
-                        startBitrate = bitrate
-                    )
-                    streamer.setVideoConfig(newVideoConfig)
-                    lastVideoConfig = newVideoConfig
-                    Log.d(TAG, "Updated SingleStreamer video bitrate to ${bitrate/1000} kbps")
-                } else {
-                    Log.e(TAG, "lastVideoConfig is null, cannot update bitrate")
+                // Ensure lastVideoConfig is initialized before updating bitrate
+                if (lastVideoConfig == null) {
+                    val config = streamer.videoConfigFlow.value
+                    if (config != null) {
+                        lastVideoConfig = config
+                        Log.d(TAG, "lastVideoConfig initialized from streamer's config before bitrate update")
+                    } else {
+                        Log.w(TAG, "Cannot update bitrate: lastVideoConfig and streamer.videoConfigFlow.value are null")
+                        return
+                    }
                 }
+                val newVideoConfig = VideoConfig(
+                    mimeType = lastVideoConfig!!.mimeType,
+                    resolution = lastVideoConfig!!.resolution,
+                    fps = lastVideoConfig!!.fps,
+                    startBitrate = bitrate
+                )
+                // Stop stream if running
+                var wasStreaming = false
+                if (streamer.isStreamingFlow.value) {
+                    Log.d(TAG, "Stopping stream before updating video config")
+                    streamer.stopStream()
+                    wasStreaming = true
+                    Log.d(TAG, "Stream stopped, waiting before reconfiguring")
+                    delay(20) // 100ms delay to allow resources to clean up
+                }
+                streamer.setVideoConfig(newVideoConfig)
+                lastVideoConfig = newVideoConfig
+                if (wasStreaming) {
+                    Log.d(TAG, "Waiting before restarting stream")
+                    delay(20) // 100ms delay before restarting
+                    streamer.startStream()
+                }
+                Log.d(TAG, "Updated SingleStreamer video bitrate to ${bitrate/1000} kbps")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to update SingleStreamer video bitrate", e)
             }
