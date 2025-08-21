@@ -2,6 +2,7 @@ package io.github.thibaultbee.streampack.example
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.media.AudioFormat
 import android.media.MediaFormat
@@ -37,6 +38,16 @@ class MainActivity : AppCompatActivity() {
 
     private val streamerRequiredPermissions =
         listOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
+
+    private fun startBitrateService() {
+        val intent = Intent(this, io.github.thibaultbee.streampack.example.bitrate.BitrateForegroundService::class.java)
+        startForegroundService(intent)
+    }
+
+    private fun stopBitrateService() {
+        val intent = Intent(this, io.github.thibaultbee.streampack.example.bitrate.BitrateForegroundService::class.java)
+        stopService(intent)
+    }
 
     @SuppressLint("MissingPermission")
     private val permissionsManager = PermissionsManager(
@@ -117,36 +128,31 @@ class MainActivity : AppCompatActivity() {
         binding.liveButton.setOnCheckedChangeListener { view, isChecked ->
             if (view.isPressed) {
                 if (isChecked) {
-                    /**
-                     * Dispatch from main thread is forced to avoid making network call on main thread
-                     * with coroutines.
-                     */
+                    startBitrateService()
+                    // Start streaming
+                    val streamUrl = "srt://localhost:8890?streamid=publish:mystream" // TODO: Replace with your actual URL
+                    Log.d(TAG, "Go Live pressed: starting stream to $streamUrl")
                     lifecycleScope.launch {
                         try {
-                            isTryingConnectionLiveData.postValue(true)
-                            /**
-                             * For SRT, use srt://my.server.url:9998?streamid=myStreamId&passphrase=myPassphrase
-                             */
-                            // TODO
-                            streamer.startStream("srt://localhost:8890?streamid=publish:mystream")
-                            //streamer.startStream("srt://localhost:6000")
-                            
-                            // Start adaptive bitrate control when streaming begins
-                            adaptiveBitrateManager.start()
+                            streamer.startStream(streamUrl)
+                            Log.d(TAG, "Streaming started")
                         } catch (e: Exception) {
-                            binding.liveButton.isChecked = false
-                            Log.e(TAG, "Failed to connect", e)
-                            toast("Connection failed: ${e.message}")
-                        } finally {
-                            isTryingConnectionLiveData.postValue(false)
+                            Log.e(TAG, "Failed to start streaming: ${e.message}", e)
+                            toast("Failed to start streaming: ${e.message}")
                         }
                     }
                 } else {
+                    stopBitrateService()
+                    // Stop streaming
+                    Log.d(TAG, "Go Live stopped: stopping stream")
                     lifecycleScope.launch {
-                        streamer.stopStream()
-                        
-                        // Stop adaptive bitrate control when streaming stops
-                        adaptiveBitrateManager.stop()
+                        try {
+                            streamer.stopStream()
+                            Log.d(TAG, "Streaming stopped")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to stop streaming: ${e.message}", e)
+                            toast("Failed to stop streaming: ${e.message}")
+                        }
                     }
                 }
             }
@@ -227,16 +233,22 @@ class MainActivity : AppCompatActivity() {
 
     @RequiresPermission(allOf = [Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO])
     private fun onPermissionsGranted() {
-        setAVSource()
-        setStreamerView()
+        // Configure streamer first
+        configureStreamer {
+            // Then set AV sources
+            setAVSource {
+                // Then bind preview and start preview
+                setStreamerView()
+            }
+        }
     }
 
     @RequiresPermission(allOf = [Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO])
-    private fun setAVSource() {
-        // Set audio and video sources.
+    private fun setAVSource(onReady: (() -> Unit)? = null) {
         lifecycleScope.launch {
             streamer.setAudioSource(MicrophoneSourceFactory())
             streamer.setCameraId(this@MainActivity.defaultCameraId)
+            onReady?.invoke()
         }
     }
 
@@ -248,40 +260,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     @SuppressLint("MissingPermission")
-    private fun configureStreamer() {
-        /**
-         * To get the parameters supported by the device, the [SingleStreamer] have a
-         * [SingleStreamer.getInfo] method.
-         */
-
-        /**
-         * There are other parameters in the [VideoConfig] such as:
-         * - bitrate
-         * - profile
-         * - level
-         * - gopSize
-         * They will be initialized with an appropriate default value.
-         */
+    private fun configureStreamer(onReady: (() -> Unit)? = null) {
         val videoConfig = VideoConfig(
             mimeType = MediaFormat.MIMETYPE_VIDEO_AVC, resolution = Size(1280, 720), fps = 25
         )
-
-        /**
-         * There are other parameters in the [AudioConfig] such as:
-         * - byteFormat
-         * - enableEchoCanceler
-         * - enableNoiseSuppressor
-         * They will be initialized with an appropriate default value.
-         */
         val audioConfig = AudioConfig(
             mimeType = MediaFormat.MIMETYPE_AUDIO_AAC,
             sampleRate = 44100,
             channelConfig = AudioFormat.CHANNEL_IN_STEREO
         )
-
         lifecycleScope.launch {
             streamer.setConfig(audioConfig, videoConfig)
-            streamer.setCameraId("1")
+            onReady?.invoke()
         }
     }
 
