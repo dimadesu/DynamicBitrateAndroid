@@ -47,6 +47,33 @@ class BitrateForegroundService : Service() {
         adaptiveBitrateManager?.initialize(streamer!!)
     }
 
+    private var statsJob: kotlinx.coroutines.Job? = null
+
+    private fun startStatsBroadcasting() {
+        statsJob?.cancel()
+        statsJob = serviceScope.launch {
+            while (true) {
+                adaptiveBitrateManager?.getBitrateState()?.value?.let { state ->
+                    val intent = Intent("io.github.thibaultbee.streampack.example.BITRATE_STATS")
+                    intent.putExtra("currentBitrate", state.currentBitrate)
+                    intent.putExtra("targetBitrate", state.targetBitrate)
+                    intent.putExtra("rtt", state.networkStats.rtt)
+                    intent.putExtra("bufferSize", state.networkStats.bufferSize)
+                    intent.putExtra("throughput", state.networkStats.throughput)
+                    intent.putExtra("packetLoss", state.networkStats.packetLoss)
+                    intent.putExtra("adjustmentReason", state.adjustmentReason)
+                    sendBroadcast(intent)
+                }
+                kotlinx.coroutines.delay(1000)
+            }
+        }
+    }
+
+    private fun stopStatsBroadcasting() {
+        statsJob?.cancel()
+        statsJob = null
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("BitrateService", "onStartCommand called")
         val action = intent?.action
@@ -78,6 +105,7 @@ class BitrateForegroundService : Service() {
                         streamer?.open(UriMediaDescriptor(streamUrl))
                         streamer?.startStream()
                         adaptiveBitrateManager?.start()
+                        startStatsBroadcasting()
                         Log.d("BitrateService", "Streaming started in foreground service")
                     } catch (e: Exception) {
                         Log.e("BitrateService", "Error starting stream: ${e.message}", e)
@@ -93,6 +121,7 @@ class BitrateForegroundService : Service() {
                         adaptiveBitrateManager?.release()
                         streamer = null
                         adaptiveBitrateManager = null
+                        stopStatsBroadcasting()
                         Log.d("BitrateService", "Streaming stopped in foreground service and resources released")
                     } catch (e: Exception) {
                         Log.e("BitrateService", "Error stopping stream: ${e.message}", e)
