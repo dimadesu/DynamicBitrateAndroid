@@ -239,7 +239,15 @@ class AdaptiveBitrateManager {
     private suspend fun updateSingleStreamerBitrate(bitrate: Int) {
         singleStreamer?.let { streamer ->
             try {
-                // Ensure lastVideoConfig is initialized before updating bitrate
+                // If encoder is available and stream is running, update bitrate directly
+                val encoder = streamer.videoEncoder
+                if (encoder != null && streamer.isStreamingFlow.value) {
+                    encoder.bitrate = bitrate
+                    Log.d(TAG, "Updated encoder bitrate directly to ${bitrate/1000} kbps")
+                    lastVideoConfig = lastVideoConfig?.copy(startBitrate = bitrate)
+                    return
+                }
+                // Fallback: update config only if encoder is not available
                 if (lastVideoConfig == null) {
                     val config = streamer.videoConfigFlow.value
                     if (config != null) {
@@ -256,23 +264,9 @@ class AdaptiveBitrateManager {
                     fps = lastVideoConfig!!.fps,
                     startBitrate = bitrate
                 )
-                // Stop stream if running
-                var wasStreaming = false
-                if (streamer.isStreamingFlow.value) {
-                    Log.d(TAG, "Stopping stream before updating video config")
-                    streamer.stopStream()
-                    wasStreaming = true
-                    Log.d(TAG, "Stream stopped, waiting before reconfiguring")
-                    delay(20) // 100ms delay to allow resources to clean up
-                }
                 streamer.setVideoConfig(newVideoConfig)
                 lastVideoConfig = newVideoConfig
-                if (wasStreaming) {
-                    Log.d(TAG, "Waiting before restarting stream")
-                    delay(20) // 100ms delay before restarting
-                    streamer.startStream()
-                }
-                Log.d(TAG, "Updated SingleStreamer video bitrate to ${bitrate/1000} kbps")
+                Log.d(TAG, "Updated SingleStreamer video bitrate to ${bitrate/1000} kbps (via config update)")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to update SingleStreamer video bitrate", e)
             }
