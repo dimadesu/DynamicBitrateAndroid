@@ -23,6 +23,7 @@ import io.github.thibaultbee.streampack.core.streamers.single.AudioConfig
 import io.github.thibaultbee.streampack.core.streamers.single.SingleStreamer
 import io.github.thibaultbee.streampack.core.streamers.single.VideoConfig
 import io.github.thibaultbee.streampack.core.utils.extensions.isClosedException
+import io.github.thibaultbee.streampack.example.bitrate.AdaptiveBitrateManager
 import io.github.thibaultbee.streampack.example.databinding.ActivityMainBinding
 import io.github.thibaultbee.streampack.example.utils.PermissionsManager
 import io.github.thibaultbee.streampack.example.utils.showDialog
@@ -94,6 +95,11 @@ class MainActivity : AppCompatActivity() {
     private val rotationRepository by lazy { RotationRepository.getInstance(applicationContext) }
 
     /**
+     * Adaptive bitrate manager for dynamic bitrate control
+     */
+    private val adaptiveBitrateManager by lazy { AdaptiveBitrateManager() }
+
+    /**
      * A LiveData to observe the connection state.
      */
     private val isTryingConnectionLiveData = MutableLiveData<Boolean>()
@@ -104,6 +110,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         bindProperties()
+        setupAdaptiveBitrate()
     }
 
     private fun bindProperties() {
@@ -120,7 +127,10 @@ class MainActivity : AppCompatActivity() {
                             /**
                              * For SRT, use srt://my.server.url:9998?streamid=myStreamId&passphrase=myPassphrase
                              */
-                            streamer.startStream("rtmp://my.server.url:1935/app/streamKey")
+                            streamer.startStream("srt://localhost:8890?streamid=publish:mystream")
+                            
+                            // Start adaptive bitrate control when streaming begins
+                            adaptiveBitrateManager.start()
                         } catch (e: Exception) {
                             binding.liveButton.isChecked = false
                             Log.e(TAG, "Failed to connect", e)
@@ -132,6 +142,9 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     lifecycleScope.launch {
                         streamer.stopStream()
+                        
+                        // Stop adaptive bitrate control when streaming stops
+                        adaptiveBitrateManager.stop()
                     }
                 }
             }
@@ -266,11 +279,41 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             streamer.setConfig(audioConfig, videoConfig)
+            streamer.setCameraId("1")
         }
     }
 
     private fun toast(message: String) {
         runOnUiThread { applicationContext.toast(message) }
+    }
+
+    /**
+     * Setup adaptive bitrate system
+     */
+    private fun setupAdaptiveBitrate() {
+        // Initialize adaptive bitrate manager with the streamer
+        adaptiveBitrateManager.initialize(streamer)
+        
+        // Configure with reasonable defaults for mobile streaming
+        adaptiveBitrateManager.configure(
+            minBitrate = 500_000,    // 500 Kbps minimum
+            maxBitrate = 4_000_000,  // 4 Mbps maximum for mobile
+            srtLatency = 2000,       // 2 second latency
+            enableSimulation = true  // Enable simulation for testing
+        )
+        
+        // Setup bitrate monitor view
+        binding.bitrateMonitor.setup(adaptiveBitrateManager, this)
+        binding.bitrateMonitor.setShowDetails(true)
+        
+        Log.d(TAG, "Adaptive bitrate system configured")
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        
+        // Release adaptive bitrate resources
+        adaptiveBitrateManager.release()
     }
 
     companion object {

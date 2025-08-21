@@ -1,0 +1,358 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:orientation="vertical"
+  android:padding="16dp"
+  android:background="@color/cardview_dark_background">
+
+  <!-- Header -->
+  <TextView
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="Adaptive Bitrate Control"
+    android:textStyle="bold"
+    android:textSize="16sp"
+    android:textColor="@android:color/white"
+    android:layout_marginBottom="8dp" />
+
+  <!-- Toggle Switch -->
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:layout_marginBottom="12dp">
+
+    <TextView
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:text="Enable Adaptive Bitrate"
+      android:textColor="@android:color/white" />
+
+    <androidx.appcompat.widget.SwitchCompat
+      android:id="@+id/toggle_adaptive_bitrate"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content" />
+
+  </LinearLayout>
+
+  <!-- Status Row -->
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:layout_marginBottom="8dp">
+
+    <TextView
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:text="Status:"
+      android:textColor="@android:color/white" />
+
+    <TextView
+      android:id="@+id/text_status"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="Inactive"
+      android:textColor="@android:color/white"
+      android:textStyle="bold" />
+
+  </LinearLayout>
+
+  <!-- Current Bitrate Row -->
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:layout_marginBottom="8dp">
+
+    <TextView
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:text="Current Bitrate:"
+      android:textColor="@android:color/white" />
+
+    <TextView
+      android:id="@+id/text_current_bitrate"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="0 kbps"
+      android:textColor="@android:color/white"
+      android:textStyle="bold" />
+
+  </LinearLayout>
+
+  <!-- Target Bitrate Row -->
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:layout_marginBottom="8dp">
+
+    <TextView
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:text="Target Bitrate:"
+      android:textColor="@android:color/white" />
+
+    <TextView
+      android:id="@+id/text_target_bitrate"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="0 kbps"
+      android:textColor="@android:color/white"
+      android:textStyle="bold" />
+
+  </LinearLayout>
+
+  <!-- Network Quality Row -->
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:layout_marginBottom="12dp">
+
+    <TextView
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:text="Network Quality:"
+      android:textColor="@android:color/white" />
+
+    <TextView
+      android:id="@+id/text_network_quality"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="GOOD"
+      android:textStyle="bold" />
+
+  </LinearLayout>
+
+  <!-- Detailed Statistics -->
+  <LinearLayout
+    android:id="@+id/layout_details"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:layout_marginBottom="12dp"
+    android:background="@drawable/rounded_background"
+    android:padding="12dp">
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="Network Statistics"
+      android:textStyle="bold"
+      android:textColor="@android:color/white"
+      android:layout_marginBottom="8dp" />
+
+    <!-- RTT -->
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="horizontal"
+      android:layout_marginBottom="4dp">
+
+      <TextView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="RTT:"
+        android:textColor="@android:color/white"
+        android:textSize="14sp" />
+
+      <TextView
+        android:id="@+id/text_rtt"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0 ms"
+        android:textColor="@android:color/white"
+        android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <!-- Buffer Size -->
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="horizontal"
+      android:layout_marginBottom="4dp">
+
+      <TextView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="Buffer Size:"
+        android:textColor="@android:color/white"
+        android:textSize="14sp" />
+
+      <TextView
+        android:id="@+id/text_buffer_size"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0 bytes"
+        android:textColor="@android:color/white"
+        android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <!-- Throughput -->
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="horizontal"
+      android:layout_marginBottom="4dp">
+
+      <TextView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="Throughput:"
+        android:textColor="@android:color/white"
+        android:textSize="14sp" />
+
+      <TextView
+        android:id="@+id/text_throughput"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0.0 Mbps"
+        android:textColor="@android:color/white"
+        android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <!-- Packet Loss -->
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="horizontal"
+      android:layout_marginBottom="8dp">
+
+      <TextView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="Packet Loss:"
+        android:textColor="@android:color/white"
+        android:textSize="14sp" />
+
+      <TextView
+        android:id="@+id/text_packet_loss"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0.00%"
+        android:textColor="@android:color/white"
+        android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <!-- Adjustment Reason -->
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="Adjustment Reason:"
+      android:textColor="@android:color/white"
+      android:textSize="12sp"
+      android:layout_marginBottom="4dp" />
+
+    <TextView
+      android:id="@+id/text_adjustment_reason"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="Stable"
+      android:textColor="@android:color/white"
+      android:textSize="12sp"
+      android:textStyle="italic" />
+
+  </LinearLayout>
+
+  <!-- Network Quality Controls -->
+  <LinearLayout
+    android:id="@+id/layout_network_controls"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/rounded_background"
+    android:padding="12dp">
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="Network Simulation Controls"
+      android:textStyle="bold"
+      android:textColor="@android:color/white"
+      android:layout_marginBottom="8dp" />
+
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="horizontal">
+
+      <Button
+        android:id="@+id/button_excellent"
+        style="@style/Widget.AppCompat.Button.Colored"
+        android:layout_width="0dp"
+        android:layout_height="36dp"
+        android:layout_weight="1"
+        android:layout_marginEnd="4dp"
+        android:text="Excellent"
+        android:textSize="10sp"
+        android:backgroundTint="#4CAF50" />
+
+      <Button
+        android:id="@+id/button_good"
+        style="@style/Widget.AppCompat.Button.Colored"
+        android:layout_width="0dp"
+        android:layout_height="36dp"
+        android:layout_weight="1"
+        android:layout_marginEnd="4dp"
+        android:layout_marginStart="4dp"
+        android:text="Good"
+        android:textSize="10sp"
+        android:backgroundTint="#8BC34A" />
+
+      <Button
+        android:id="@+id/button_fair"
+        style="@style/Widget.AppCompat.Button.Colored"
+        android:layout_width="0dp"
+        android:layout_height="36dp"
+        android:layout_weight="1"
+        android:layout_marginEnd="4dp"
+        android:layout_marginStart="4dp"
+        android:text="Fair"
+        android:textSize="10sp"
+        android:backgroundTint="#FFC107" />
+
+      <Button
+        android:id="@+id/button_poor"
+        style="@style/Widget.AppCompat.Button.Colored"
+        android:layout_width="0dp"
+        android:layout_height="36dp"
+        android:layout_weight="1"
+        android:layout_marginEnd="4dp"
+        android:layout_marginStart="4dp"
+        android:text="Poor"
+        android:textSize="10sp"
+        android:backgroundTint="#FF9800" />
+
+      <Button
+        android:id="@+id/button_critical"
+        style="@style/Widget.AppCompat.Button.Colored"
+        android:layout_width="0dp"
+        android:layout_height="36dp"
+        android:layout_weight="1"
+        android:layout_marginStart="4dp"
+        android:text="Critical"
+        android:textSize="10sp"
+        android:backgroundTint="#F44336" />
+
+    </LinearLayout>
+
+  </LinearLayout>
+
+</LinearLayout>
