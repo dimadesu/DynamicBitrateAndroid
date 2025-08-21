@@ -14,6 +14,7 @@ import io.github.thibaultbee.streampack.example.R
 import io.github.thibaultbee.streampack.core.streamers.single.SingleStreamer
 import io.github.thibaultbee.streampack.core.interfaces.setCameraId
 import io.github.thibaultbee.streampack.core.elements.sources.video.camera.extensions.defaultCameraId
+import io.github.thibaultbee.streampack.core.configuration.mediadescriptor.UriMediaDescriptor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -54,6 +55,13 @@ class BitrateForegroundService : Service() {
             "START_STREAM" -> {
                 serviceScope.launch {
                     try {
+                        // If streamer is null (first start or after release), create a new instance
+                        if (streamer == null) {
+                            streamer = SingleStreamer(this@BitrateForegroundService, withAudio = true, withVideo = true)
+                            streamer?.setCameraId(defaultCameraId)
+                            adaptiveBitrateManager = AdaptiveBitrateManager()
+                            adaptiveBitrateManager?.initialize(streamer!!)
+                        }
                         streamer?.setConfig(
                             io.github.thibaultbee.streampack.core.streamers.single.AudioConfig(
                                 mimeType = android.media.MediaFormat.MIMETYPE_AUDIO_AAC,
@@ -67,7 +75,7 @@ class BitrateForegroundService : Service() {
                             )
                         )
                         streamer?.setAudioSource(io.github.thibaultbee.streampack.core.elements.sources.audio.audiorecord.MicrophoneSourceFactory())
-                        // Camera already set, just start stream (headless)
+                        streamer?.open(UriMediaDescriptor(streamUrl))
                         streamer?.startStream()
                         adaptiveBitrateManager?.start()
                         Log.d("BitrateService", "Streaming started in foreground service")
@@ -82,14 +90,16 @@ class BitrateForegroundService : Service() {
                         adaptiveBitrateManager?.stop()
                         streamer?.stopStream()
                         streamer?.release()
-                        Log.d("BitrateService", "Streaming stopped in foreground service")
+                        adaptiveBitrateManager?.release()
+                        streamer = null
+                        adaptiveBitrateManager = null
+                        Log.d("BitrateService", "Streaming stopped in foreground service and resources released")
                     } catch (e: Exception) {
                         Log.e("BitrateService", "Error stopping stream: ${e.message}", e)
                     }
                 }
             }
             else -> {
-                // Default: just start bitrate monitoring if needed
                 serviceScope.launch {
                     try {
                         adaptiveBitrateManager?.start()
