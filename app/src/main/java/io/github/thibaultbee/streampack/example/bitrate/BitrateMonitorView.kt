@@ -103,20 +103,15 @@ class BitrateMonitorView @JvmOverloads constructor(
         }
         
         owner.lifecycleScope.launch {
-            manager.currentBitrate.collect { bitrate ->
-                updateCurrentBitrate(bitrate)
+            manager.getBitrateState().collect { bitrateState ->
+                updateCurrentBitrate(bitrateState.currentBitrate)
+                updateBitrateState(bitrateState)
             }
         }
         
         owner.lifecycleScope.launch {
             manager.networkQuality.collect { quality ->
                 updateNetworkQuality(quality)
-            }
-        }
-        
-        owner.lifecycleScope.launch {
-            manager.getBitrateState().collect { bitrateState ->
-                updateBitrateState(bitrateState)
             }
         }
     }

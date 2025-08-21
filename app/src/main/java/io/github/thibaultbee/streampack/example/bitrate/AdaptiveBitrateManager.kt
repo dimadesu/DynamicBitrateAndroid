@@ -40,9 +40,7 @@ class AdaptiveBitrateManager {
     private val _isActive = MutableStateFlow(false)
     val isActive: StateFlow<Boolean> = _isActive.asStateFlow()
     
-    private val _currentBitrate = MutableStateFlow(0)
-    val currentBitrate: StateFlow<Int> = _currentBitrate.asStateFlow()
-    
+    // Bitrate state is now managed only by DynamicBitrateController
     private val _networkQuality = MutableStateFlow(NetworkStatsMonitor.ConnectionQuality.GOOD)
     val networkQuality: StateFlow<NetworkStatsMonitor.ConnectionQuality> = _networkQuality.asStateFlow()
     
@@ -140,9 +138,7 @@ class AdaptiveBitrateManager {
     /**
      * Get current bitrate statistics
      */
-    fun getBitrateState(): StateFlow<DynamicBitrateController.BitrateState> {
-        return bitrateController.bitrateState
-    }
+    fun getBitrateState(): StateFlow<DynamicBitrateController.BitrateState> = bitrateController.bitrateState
     
     /**
      * Setup the bitrate controller callbacks
@@ -151,7 +147,6 @@ class AdaptiveBitrateManager {
         bitrateController.onBitrateChanged = { newBitrate ->
             scope.launch {
                 applyBitrateToStreamer(newBitrate)
-                _currentBitrate.value = newBitrate
             }
         }
     }
@@ -257,9 +252,9 @@ class AdaptiveBitrateManager {
         val bitrateState = bitrateController.bitrateState.value
         val quality = networkQuality.value
         val isActiveText = if (isActive.value) "Active" else "Inactive"
-        
         return "Adaptive Bitrate: $isActiveText\n" +
                 "Current: ${bitrateState.currentBitrate/1000} kbps\n" +
+                "Target: ${bitrateState.targetBitrate/1000} kbps\n" +
                 "Network: $quality\n" +
                 "RTT: ${bitrateState.networkStats.rtt}ms\n" +
                 "Reason: ${bitrateState.adjustmentReason}"

@@ -51,31 +51,60 @@ class NetworkStatsMonitor {
      * Start monitoring SRT connection statistics
      * In a real implementation, this would interface with the SRT library
      */
+    /**
+     * Start monitoring SRT connection statistics
+     * If srtSocket is a StreamPack streamer, use endpoint.metrics for real stats
+     */
     fun startMonitoring(srtSocket: Any? = null) {
         Log.d(TAG, "Starting SRT statistics monitoring")
-        
         monitoringJob = scope.launch {
             while (isActive) {
                 try {
-                    val stats = if (srtSocket != null) {
-                        // TODO: Replace with actual SRT statistics gathering
-                        // getSrtStatistics(srtSocket)
-                        getSimulatedStats()
-                    } else {
-                        getSimulatedStats()
+                    val stats = when {
+                        srtSocket != null && isSimulating.not() -> {
+                            // Try to get real SRT stats from streamer.endpoint.metrics
+                            try {
+                                val endpoint = srtSocket.javaClass.getMethod("getEndpoint").invoke(srtSocket)
+                                val metrics = endpoint.javaClass.getMethod("getMetrics").invoke(endpoint)
+                                // If metrics is of type io.github.thibaultbee.srtdroid.core.models.Stats, map to SrtStats
+                                mapSrtMetricsToStats(metrics)
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Failed to get real SRT stats, falling back to simulation", e)
+                                getSimulatedStats()
+                            }
+                        }
+                        else -> getSimulatedStats()
                     }
-                    
                     _statsFlow.emit(stats)
-                    
-                    // Check for connection timeout
                     checkConnectionTimeout(stats)
-                    
                 } catch (e: Exception) {
                     Log.e(TAG, "Error gathering SRT statistics", e)
                 }
-                
                 delay(STATS_UPDATE_INTERVAL)
             }
+        }
+    }
+
+    /**
+     * Map StreamPack SRT metrics to SrtStats
+     */
+    private fun mapSrtMetricsToStats(metrics: Any): SrtStats {
+        return try {
+            val rtt = metrics.javaClass.getDeclaredField("msRTT").get(metrics) as? Int ?: 0
+            val bufferSize = metrics.javaClass.getDeclaredField("pktSndBuf").get(metrics) as? Int ?: 0
+            val throughputMbps = metrics.javaClass.getDeclaredField("mbpsBandwidth").get(metrics) as? Double ?: 0.0
+            val packetLoss = metrics.javaClass.getDeclaredField("pktSndLoss").get(metrics) as? Double ?: 0.0
+            val ackCount = metrics.javaClass.getDeclaredField("pktRecvACKTotal").get(metrics) as? Long ?: 0L
+            SrtStats(
+                rtt = rtt,
+                bufferSize = bufferSize,
+                throughputMbps = throughputMbps,
+                packetLoss = packetLoss,
+                ackCount = ackCount
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to map SRT metrics, using simulated stats", e)
+            getSimulatedStats()
         }
     }
     
