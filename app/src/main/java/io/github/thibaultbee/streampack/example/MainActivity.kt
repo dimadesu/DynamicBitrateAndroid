@@ -285,7 +285,13 @@ class MainActivity : AppCompatActivity() {
     private fun setupAdaptiveBitrate() {
         // Initialize adaptive bitrate manager with the streamer
         adaptiveBitrateManager.initialize(streamer)
-        
+        // Cache initial video config for bitrate changes
+        adaptiveBitrateManager.lastVideoConfig = VideoConfig(
+            mimeType = MediaFormat.MIMETYPE_VIDEO_AVC,
+            resolution = Size(1280, 720),
+            fps = 25,
+            startBitrate = 100_000 // initial value, can be updated
+        )
         // Configure with reasonable defaults for mobile streaming
         adaptiveBitrateManager.configure(
             minBitrate = 100_000,    // 100 Kbps minimum
@@ -293,11 +299,9 @@ class MainActivity : AppCompatActivity() {
             srtLatency = 2000,       // 2 second latency
             enableSimulation = false  // Enable simulation for testing
         )
-        
         // Setup bitrate monitor view
         binding.bitrateMonitor.setup(adaptiveBitrateManager, this)
         binding.bitrateMonitor.setShowDetails(true)
-        
         Log.d(TAG, "Adaptive bitrate system configured")
     }
     

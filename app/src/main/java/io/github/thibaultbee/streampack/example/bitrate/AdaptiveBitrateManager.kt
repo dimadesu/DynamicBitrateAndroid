@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.*
  * Applies the belacoder.c adaptive bitrate algorithm to StreamPack streamers
  */
 class AdaptiveBitrateManager {
+    // Cache last used video config for dynamic bitrate changes
+    var lastVideoConfig: VideoConfig? = null
     
     companion object {
         private const val TAG = "AdaptiveBitrateManager"
@@ -206,27 +208,22 @@ class AdaptiveBitrateManager {
     private suspend fun updateSingleStreamerBitrate(bitrate: Int) {
         singleStreamer?.let { streamer ->
             try {
-                // Create new config with updated bitrate
-                val newVideoConfig = VideoConfig(
-                    mimeType = MediaFormat.MIMETYPE_VIDEO_AVC,
-                    resolution = Size(1280, 720),
-                    fps = 25,
-                    startBitrate = bitrate
-                )
-                
-                // Create audio config (keeping existing settings)
-                val audioConfig = AudioConfig(
-                    mimeType = MediaFormat.MIMETYPE_AUDIO_AAC,
-                    sampleRate = 44100,
-                    channelConfig = AudioFormat.CHANNEL_IN_STEREO
-                )
-                
-                // Apply new configuration
-                streamer.setConfig(audioConfig, newVideoConfig)
-                
-                Log.d(TAG, "Updated SingleStreamer bitrate to ${bitrate/1000} kbps")
+                // Only update video bitrate while streaming
+                if (lastVideoConfig != null) {
+                    val newVideoConfig = VideoConfig(
+                        mimeType = lastVideoConfig!!.mimeType,
+                        resolution = lastVideoConfig!!.resolution,
+                        fps = lastVideoConfig!!.fps,
+                        startBitrate = bitrate
+                    )
+                    streamer.setVideoConfig(newVideoConfig)
+                    lastVideoConfig = newVideoConfig
+                    Log.d(TAG, "Updated SingleStreamer video bitrate to ${bitrate/1000} kbps")
+                } else {
+                    Log.e(TAG, "lastVideoConfig is null, cannot update bitrate")
+                }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to update SingleStreamer bitrate", e)
+                Log.e(TAG, "Failed to update SingleStreamer video bitrate", e)
             }
         }
     }
@@ -236,28 +233,32 @@ class AdaptiveBitrateManager {
      * Note: DualStreamer config types are internal, so dynamic bitrate is not supported yet
      */
     private suspend fun updateDualStreamerBitrate(bitrate: Int) {
-        dualStreamer?.let { streamer ->
-            Log.w(TAG, "DualStreamer dynamic bitrate control is not yet supported due to internal API limitations")
-            Log.d(TAG, "Would set DualStreamer bitrate to ${bitrate/1000} kbps")
-            
-            // TODO: Implement when DualStreamer config APIs become public
-            // For now, dynamic bitrate is only supported with SingleStreamer
+        singleStreamer?.let { streamer ->
+            try {
+                // Use cached video config for bitrate changes
+                if (lastVideoConfig != null) {
+                    val newVideoConfig = lastVideoConfig!!.copy(startBitrate = bitrate)
+                    streamer.setVideoConfig(newVideoConfig)
+                    lastVideoConfig = newVideoConfig
+                    Log.d(TAG, "Updated SingleStreamer video bitrate to ${bitrate/1000} kbps")
+                } else {
+                    Log.e(TAG, "lastVideoConfig is null, cannot update bitrate")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to update SingleStreamer video bitrate", e)
+            }
         }
-    }
-    
-    /**
-     * Get a summary of the current adaptive bitrate state
-     */
     fun getStatusSummary(): String {
         val bitrateState = bitrateController.bitrateState.value
         val quality = networkQuality.value
         val isActiveText = if (isActive.value) "Active" else "Inactive"
         return "Adaptive Bitrate: $isActiveText\n" +
-                "Current: ${bitrateState.currentBitrate/1000} kbps\n" +
-                "Target: ${bitrateState.targetBitrate/1000} kbps\n" +
-                "Network: $quality\n" +
-                "RTT: ${bitrateState.networkStats.rtt}ms\n" +
-                "Reason: ${bitrateState.adjustmentReason}"
+            "Current: ${bitrateState.currentBitrate/1000} kbps\n" +
+            "Target: ${bitrateState.targetBitrate/1000} kbps\n" +
+            "Network: $quality\n" +
+            "RTT: ${bitrateState.networkStats.rtt}ms\n" +
+            "Reason: ${bitrateState.adjustmentReason}"
+    }
     }
     
     /**
