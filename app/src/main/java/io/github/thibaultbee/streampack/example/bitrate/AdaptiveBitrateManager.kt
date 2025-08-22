@@ -76,32 +76,6 @@ class AdaptiveBitrateManager {
     }
     
     /**
-     * Initialize the adaptive bitrate manager with a dual streamer
-     */
-    fun initialize(streamer: DualStreamer) {
-        this.dualStreamer = streamer
-        this.singleStreamer = null
-        setupBitrateController()
-        Log.d(TAG, "Initialized with DualStreamer")
-    }
-    
-    /**
-     * Configure the adaptive bitrate system
-     */
-    fun configure(
-        minBitrate: Int = 300_000,    // 300 Kbps
-        maxBitrate: Int = 6_000_000,  // 6 Mbps
-        srtLatency: Int = 2000,       // 2 seconds
-        enableSimulation: Boolean = false
-    ) {
-        bitrateController.updateConfiguration(minBitrate, maxBitrate, srtLatency)
-        
-    // ...existing code...
-        
-        Log.d(TAG, "Configured: min=${minBitrate/1000}kbps, max=${maxBitrate/1000}kbps, latency=${srtLatency}ms")
-    }
-    
-    /**
      * Start adaptive bitrate control
      */
     fun start(srtSocket: Any? = null) {
@@ -109,8 +83,6 @@ class AdaptiveBitrateManager {
             Log.w(TAG, "Adaptive bitrate already started")
             return
         }
-
-    // ...existing code...
 
         this.srtSocket = srtSocket
         isEnabled = true
@@ -209,10 +181,6 @@ class AdaptiveBitrateManager {
      */
     private suspend fun applyBitrateToStreamer(bitrate: Int) {
         val now = System.currentTimeMillis()
-        if (now - lastBitrateUpdateTime < 5000) {
-            Log.d(TAG, "Bitrate update throttled: only allowed every 5 seconds")
-            return
-        }
         lastBitrateUpdateTime = now
         try {
             when {
@@ -273,12 +241,12 @@ class AdaptiveBitrateManager {
      * Release all resources
      */
     fun release() {
-    stop()
-    // If release() is not available on networkMonitor, skip
-    bitrateController.release()
-    scope.cancel()
-    singleStreamer = null
-    dualStreamer = null
-    Log.d(TAG, "Adaptive bitrate manager released")
+        stop()
+        // If release() is not available on networkMonitor, skip
+        bitrateController.release()
+        scope.cancel()
+        singleStreamer = null
+        dualStreamer = null
+        Log.d(TAG, "Adaptive bitrate manager released")
     }
 }

@@ -136,17 +136,10 @@ class BitrateForegroundService : Service() {
                 }
             }
             else -> {
-                serviceScope.launch {
-                    try {
-                        adaptiveBitrateManager?.start()
-                        Log.d("BitrateService", "Bitrate monitoring started")
-                    } catch (e: Exception) {
-                        Log.e("BitrateService", "Error starting bitrate monitoring: ${e.message}", e)
-                    }
-                }
+                Log.e("BitrateService", "Error starting stream: unknown action ${action}")
             }
         }
-        return START_STICKY
+        return START_REDELIVER_INTENT
     }
 
     override fun onBind(intent: Intent?): IBinder? {
