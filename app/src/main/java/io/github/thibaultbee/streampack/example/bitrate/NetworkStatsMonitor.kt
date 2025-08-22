@@ -37,11 +37,7 @@ class NetworkStatsMonitor {
     enum class ConnectionQuality {
         GOOD, FAIR, POOR
     }
-    
-    /**
-     * Start monitoring SRT connection statistics
-     * In a real implementation, this would interface with the SRT library
-     */
+
     /**
      * Start monitoring SRT connection statistics
      * If srtSocket is a StreamPack streamer, use endpoint.metrics for real stats

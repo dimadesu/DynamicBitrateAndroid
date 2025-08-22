@@ -220,10 +220,6 @@ class AdaptiveBitrateManager {
                     // Update video config for single streamer
                     updateSingleStreamerBitrate(bitrate)
                 }
-                dualStreamer != null -> {
-                    // Update video config for dual streamer
-                    updateDualStreamerBitrate(bitrate)
-                }
                 else -> {
                     Log.w(TAG, "No streamer available to update bitrate")
                 }
@@ -271,64 +267,6 @@ class AdaptiveBitrateManager {
                 Log.e(TAG, "Failed to update SingleStreamer video bitrate", e)
             }
         }
-    }
-    
-    /**
-     * Update bitrate for DualStreamer
-     * Note: DualStreamer config types are internal, so dynamic bitrate is not supported yet
-     */
-    private suspend fun updateDualStreamerBitrate(bitrate: Int) {
-        singleStreamer?.let { streamer ->
-            try {
-                // Use cached video config for bitrate changes
-                if (lastVideoConfig != null) {
-                    val newVideoConfig = lastVideoConfig!!.copy(startBitrate = bitrate)
-                    streamer.setVideoConfig(newVideoConfig)
-                    lastVideoConfig = newVideoConfig
-                    Log.d(TAG, "Updated SingleStreamer video bitrate to ${bitrate/1000} kbps")
-                } else {
-                    Log.e(TAG, "lastVideoConfig is null, cannot update bitrate")
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to update SingleStreamer video bitrate", e)
-            }
-        }
-    fun getStatusSummary(): String {
-        val bitrateState = bitrateController.bitrateState.value
-        val quality = networkQuality.value
-        val isActiveText = if (isActive.value) "Active" else "Inactive"
-        return "Adaptive Bitrate: $isActiveText\n" +
-            "Current: ${bitrateState.currentBitrate/1000} kbps\n" +
-            "Target: ${bitrateState.targetBitrate/1000} kbps\n" +
-            "Network: $quality\n" +
-            "RTT: ${bitrateState.networkStats.rtt}ms\n" +
-            "Reason: ${bitrateState.adjustmentReason}"
-    }
-    }
-    
-    /**
-     * Export configuration for persistence
-     */
-    fun exportConfiguration(): Map<String, Any> {
-        return mapOf(
-            "minBitrate" to bitrateController.minBitrate,
-            "maxBitrate" to bitrateController.maxBitrate,
-            "srtLatency" to bitrateController.srtLatency,
-            "isEnabled" to isEnabled
-        )
-    }
-    
-    /**
-     * Import configuration from persistence
-     */
-    fun importConfiguration(config: Map<String, Any>) {
-        val minBitrate = (config["minBitrate"] as? Int) ?: 300_000
-        val maxBitrate = (config["maxBitrate"] as? Int) ?: 6_000_000
-        val srtLatency = (config["srtLatency"] as? Int) ?: 2000
-        
-        configure(minBitrate, maxBitrate, srtLatency)
-        
-        Log.d(TAG, "Configuration imported")
     }
     
     /**
