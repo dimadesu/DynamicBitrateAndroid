@@ -103,25 +103,4 @@ class NetworkStatsMonitor {
             // In a real implementation, this would trigger connection recovery
         }
     }
-    
-    /**
-     * Get current connection quality assessment
-     */
-    fun getConnectionQuality(stats: Stats): ConnectionQuality {
-        return when {
-            stats.msRTT <= 100 && stats.pktSndLossTotal <= 1 -> ConnectionQuality.GOOD
-            stats.msRTT <= 200 && stats.pktSndLossTotal <= 3 -> ConnectionQuality.FAIR
-            else -> ConnectionQuality.POOR
-        }
-    }
-    
-    /**
-     * Generate a human-readable summary of connection statistics
-     */
-    fun getStatsSummary(stats: Stats): String {
-        val quality = getConnectionQuality(stats)
-        return "RTT: ${stats.msRTT}ms, Buffer: ${stats.pktSndBuf}B, " +
-            "Throughput: ${"%.1f".format(stats.mbpsBandwidth)}Mbps, " +
-            "Loss: ${stats.pktSndLossTotal}%, Quality: $quality"
-    }
 }
