@@ -60,13 +60,26 @@ class MainActivity : AppCompatActivity() {
         }
         registerReceiver(bitrateStatsReceiver, IntentFilter("io.github.thibaultbee.streampack.example.BITRATE_STATS"))
 
-        // Register receiver for SRT stats and display in UI
+        // Register receiver for SRT stats and display in UI, filtering out zero-value fields
         srtStatsReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: android.content.Intent?) {
                 if (intent?.action == "io.github.thibaultbee.streampack.example.SRT_STATS") {
                     val stats = intent.getStringExtra("srtStats")
-                    // Display SRT stats in a TextView (add to your layout as needed)
-                    findViewById<TextView?>(R.id.srtStatsTextView)?.text = stats ?: "No SRT stats"
+                    android.util.Log.d("SRT_STATS_RAW", stats ?: "No SRT stats")
+                    // Parse the actual stats string and render only main values
+                    val rendered = stats?.let {
+                        val regex = Regex("""([a-zA-Z0-9]+)=([^,)]+)""")
+                        val map = regex.findAll(it).associate { m -> m.groupValues[1] to m.groupValues[2] }
+                        listOf(
+                            map["msRTT"]?.let { v -> "RTT: $v ms" },
+                            map["mbpsSendRate"]?.let { v -> "Send Rate: $v Mbps" },
+                            map["pktRecvACKTotal"]?.let { v -> "ACKs: $v" },
+                            map["pktRetransTotal"]?.let { v -> "Retransmits: $v" },
+                            map["pktSndBuf"]?.let { v -> "Send Buffer: $v" },
+                            map["pktFlightSize"]?.let { v -> "Flight Size: $v" }
+                        ).filterNotNull().joinToString("\n").ifEmpty { "No SRT stats" }
+                    } ?: "No SRT stats"
+                    findViewById<TextView?>(R.id.srtStatsTextView)?.text = rendered
                 }
             }
         }
