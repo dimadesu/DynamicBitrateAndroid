@@ -10,7 +10,6 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import io.github.thibaultbee.streampack.example.R
 import io.github.thibaultbee.streampack.core.streamers.single.SingleStreamer
 import io.github.thibaultbee.streampack.core.interfaces.setCameraId
 import io.github.thibaultbee.streampack.core.elements.sources.video.camera.extensions.defaultCameraId
@@ -18,7 +17,6 @@ import io.github.thibaultbee.streampack.core.configuration.mediadescriptor.UriMe
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 class BitrateForegroundService : Service() {
     companion object {
@@ -26,7 +24,6 @@ class BitrateForegroundService : Service() {
         const val NOTIFICATION_ID = 1001
     }
 
-    private var adaptiveBitrateManager: AdaptiveBitrateManager? = null
     private var streamer: SingleStreamer? = null
     private val serviceScope = CoroutineScope(Dispatchers.Default)
 
@@ -42,37 +39,9 @@ class BitrateForegroundService : Service() {
         serviceScope.launch {
             streamer?.setCameraId(defaultCameraId)
         }
-        // Do NOT call setStreamerView or bind preview
-        adaptiveBitrateManager = AdaptiveBitrateManager()
-        adaptiveBitrateManager?.initialize(streamer!!)
     }
 
     private var statsJob: kotlinx.coroutines.Job? = null
-
-    private fun startStatsBroadcasting() {
-        statsJob?.cancel()
-        statsJob = serviceScope.launch {
-            while (true) {
-                adaptiveBitrateManager?.getBitrateState()?.value?.let { state ->
-                    val intent = Intent("io.github.thibaultbee.streampack.example.BITRATE_STATS")
-                    intent.putExtra("currentBitrate", state.currentBitrate)
-                    intent.putExtra("targetBitrate", state.targetBitrate)
-                    intent.putExtra("rtt", state.networkStats.rtt)
-                    intent.putExtra("bufferSize", state.networkStats.bufferSize)
-                    intent.putExtra("throughput", state.networkStats.throughput)
-                    intent.putExtra("packetLoss", state.networkStats.packetLoss)
-                    intent.putExtra("adjustmentReason", state.adjustmentReason)
-                    sendBroadcast(intent)
-                }
-                kotlinx.coroutines.delay(1000)
-            }
-        }
-    }
-
-    private fun stopStatsBroadcasting() {
-        statsJob?.cancel()
-        statsJob = null
-    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("BitrateService", "onStartCommand called")
@@ -86,8 +55,6 @@ class BitrateForegroundService : Service() {
                         if (streamer == null) {
                             streamer = SingleStreamer(this@BitrateForegroundService, withAudio = true, withVideo = true)
                             streamer?.setCameraId(defaultCameraId)
-                            adaptiveBitrateManager = AdaptiveBitrateManager()
-                            adaptiveBitrateManager?.initialize(streamer!!)
                         }
                         streamer?.setConfig(
                             io.github.thibaultbee.streampack.core.streamers.single.AudioConfig(
@@ -105,15 +72,6 @@ class BitrateForegroundService : Service() {
                         streamer?.open(UriMediaDescriptor(streamUrl))
                         streamer?.startStream()
                         streamer?.endpoint
-                        // Pass the endpoint to AdaptiveBitrateManager for real SRT stats
-                        val endpoint = try {
-                            streamer?.endpoint
-                        } catch (e: Exception) {
-                            Log.w("BitrateService", "Could not get endpoint from streamer, using null", e)
-                            null
-                        }
-                        adaptiveBitrateManager?.start(endpoint)
-                        startStatsBroadcasting()
                         Log.d("BitrateService", "Streaming started in foreground service")
                     } catch (e: Exception) {
                         Log.e("BitrateService", "Error starting stream: ${e.message}", e)
@@ -123,13 +81,9 @@ class BitrateForegroundService : Service() {
             "STOP_STREAM" -> {
                 serviceScope.launch {
                     try {
-                        adaptiveBitrateManager?.stop()
                         streamer?.stopStream()
                         streamer?.release()
-                        adaptiveBitrateManager?.release()
                         streamer = null
-                        adaptiveBitrateManager = null
-                        stopStatsBroadcasting()
                         Log.d("BitrateService", "Streaming stopped in foreground service and resources released")
                     } catch (e: Exception) {
                         Log.e("BitrateService", "Error stopping stream: ${e.message}", e)
@@ -152,8 +106,6 @@ class BitrateForegroundService : Service() {
         Log.d("BitrateService", "onDestroy called")
         serviceScope.launch {
             try {
-                adaptiveBitrateManager?.stop()
-                adaptiveBitrateManager?.release()
                 streamer?.stopStream()
                 streamer?.release()
                 Log.d("BitrateService", "Streaming and bitrate monitoring stopped and resources released")
