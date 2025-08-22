@@ -138,10 +138,13 @@ class NetworkStatsMonitor {
             while (isActive) {
                 try {
                     val stats = try {
-                        // Use metrics getter method via reflection
-                        val metrics = srtSocket?.javaClass?.getMethod("getMetrics")?.invoke(srtSocket)
-                        Log.d(TAG, "Using real SRT stats from metrics property: $metrics")
-                        mapSrtMetricsToStats(metrics!!)
+                        if (srtSocket is io.github.thibaultbee.srtdroid.core.models.SrtSocket) {
+                            val srtStats = srtSocket.bstats(false)
+                            mapSrtStatsToStats(srtStats)
+                        } else {
+                            Log.w(TAG, "srtSocket is not SrtSocket, cannot get stats directly")
+                            SrtStats() // Emit empty stats on error
+                        }
                     } catch (e: Exception) {
                         Log.w(TAG, "Failed to get real SRT stats from metrics property", e)
                         SrtStats() // Emit empty stats on error
@@ -159,109 +162,49 @@ class NetworkStatsMonitor {
     /**
      * Map StreamPack SRT metrics to SrtStats
      */
-    private fun mapSrtMetricsToStats(metrics: Any): SrtStats {
-        // Log all available fields for debugging
-        val fields = metrics.javaClass.declaredFields
-        for (field in fields) {
-            field.isAccessible = true
-            try {
-                val value = field.get(metrics)
-                Log.d(TAG, "SRT metrics field: ${field.name} = $value")
-            } catch (e: Exception) {
-                Log.w(TAG, "Cannot access SRT metrics field: ${field.name}", e)
-            }
-        }
-
-        // Helper to get field value or default
-        fun <T> getField(name: String, default: T): T {
-            return try {
-                val f = metrics.javaClass.getDeclaredField(name); f.isAccessible = true; f.get(metrics) as? T ?: default
-            } catch (e: Exception) { Log.w(TAG, "$name not accessible", e); default }
-        }
+    private fun mapSrtStatsToStats(stats: io.github.thibaultbee.srtdroid.core.models.Stats): SrtStats {
         return SrtStats(
-            msTimeStamp = getField("msTimeStamp", 0L),
-            pktSentTotal = getField("pktSentTotal", 0L),
-            pktRecvTotal = getField("pktRecvTotal", 0L),
-            pktSndLossTotal = getField("pktSndLossTotal", 0L),
-            pktRcvLossTotal = getField("pktRcvLossTotal", 0L),
-            pktRetransTotal = getField("pktRetransTotal", 0L),
-            pktSentACKTotal = getField("pktSentACKTotal", 0L),
-            pktRecvACKTotal = getField("pktRecvACKTotal", 0L),
-            pktSentNAKTotal = getField("pktSentNAKTotal", 0L),
-            pktRecvNAKTotal = getField("pktRecvNAKTotal", 0L),
-            usSndDurationTotal = getField("usSndDurationTotal", 0L),
-            pktSndDropTotal = getField("pktSndDropTotal", 0L),
-            pktRcvDropTotal = getField("pktRcvDropTotal", 0L),
-            pktRcvUndecryptTotal = getField("pktRcvUndecryptTotal", 0L),
-            byteSentTotal = getField("byteSentTotal", 0L),
-            byteRecvTotal = getField("byteRecvTotal", 0L),
-            byteRcvLossTotal = getField("byteRcvLossTotal", 0L),
-            byteRetransTotal = getField("byteRetransTotal", 0L),
-            byteSndDropTotal = getField("byteSndDropTotal", 0L),
-            byteRcvDropTotal = getField("byteRcvDropTotal", 0L),
-            byteRcvUndecryptTotal = getField("byteRcvUndecryptTotal", 0L),
-            pktSent = getField("pktSent", 0L),
-            pktRecv = getField("pktRecv", 0L),
-            pktSndLoss = getField("pktSndLoss", 0L),
-            pktRcvLoss = getField("pktRcvLoss", 0L),
-            pktRetrans = getField("pktRetrans", 0L),
-            pktRcvRetrans = getField("pktRcvRetrans", 0L),
-            pktSentACK = getField("pktSentACK", 0L),
-            pktRecvACK = getField("pktRecvACK", 0L),
-            pktSentNAK = getField("pktSentNAK", 0L),
-            pktRecvNAK = getField("pktRecvNAK", 0L),
-            mbpsSendRate = getField("mbpsSendRate", 0.0),
-            mbpsRecvRate = getField("mbpsRecvRate", 0.0),
-            usSndDuration = getField("usSndDuration", 0L),
-            pktReorderDistance = getField("pktReorderDistance", 0),
-            pktRcvAvgBelatedTime = getField("pktRcvAvgBelatedTime", 0),
-            pktRcvBelated = getField("pktRcvBelated", 0),
-            pktSndDrop = getField("pktSndDrop", 0L),
-            pktRcvDrop = getField("pktRcvDrop", 0L),
-            pktRcvUndecrypt = getField("pktRcvUndecrypt", 0L),
-            byteSent = getField("byteSent", 0L),
-            byteRecv = getField("byteRecv", 0L),
-            byteRcvLoss = getField("byteRcvLoss", 0L),
-            byteRetrans = getField("byteRetrans", 0L),
-            byteSndDrop = getField("byteSndDrop", 0L),
-            byteRcvDrop = getField("byteRcvDrop", 0L),
-            byteRcvUndecrypt = getField("byteRcvUndecrypt", 0L),
-            usPktSndPeriod = getField("usPktSndPeriod", 0L),
-            pktFlowWindow = getField("pktFlowWindow", 0),
-            pktCongestionWindow = getField("pktCongestionWindow", 0),
-            pktFlightSize = getField("pktFlightSize", 0),
-            msRTT = getField("msRTT", 0.0),
-            mbpsBandwidth = getField("mbpsBandwidth", 0.0),
-            byteAvailSndBuf = getField("byteAvailSndBuf", 0L),
-            byteAvailRcvBuf = getField("byteAvailRcvBuf", 0L),
-            mbpsMaxBW = getField("mbpsMaxBW", 0.0),
-            byteMSS = getField("byteMSS", 0L),
-            pktSndBuf = getField("pktSndBuf", 0),
-            byteSndBuf = getField("byteSndBuf", 0),
-            msSndBuf = getField("msSndBuf", 0),
-            msSndTsbPdDelay = getField("msSndTsbPdDelay", 0),
-            pktRcvBuf = getField("pktRcvBuf", 0),
-            byteRcvBuf = getField("byteRcvBuf", 0),
-            msRcvBuf = getField("msRcvBuf", 0),
-            msRcvTsbPdDelay = getField("msRcvTsbPdDelay", 0),
-            pktSndFilterExtraTotal = getField("pktSndFilterExtraTotal", 0L),
-            pktRcvFilterExtraTotal = getField("pktRcvFilterExtraTotal", 0L),
-            pktRcvFilterSupplyTotal = getField("pktRcvFilterSupplyTotal", 0L),
-            pktRcvFilterLossTotal = getField("pktRcvFilterLossTotal", 0L),
-            pktSndFilterExtra = getField("pktSndFilterExtra", 0L),
-            pktRcvFilterExtra = getField("pktRcvFilterExtra", 0L),
-            pktRcvFilterSupply = getField("pktRcvFilterSupply", 0L),
-            pktRcvFilterLoss = getField("pktRcvFilterLoss", 0L),
-            pktReorderTolerance = getField("pktReorderTolerance", 0),
-            pktSentUniqueTotal = getField("pktSentUniqueTotal", 0L),
-            pktRecvUniqueTotal = getField("pktRecvUniqueTotal", 0L),
-            byteSentUniqueTotal = getField("byteSentUniqueTotal", 0L),
-            byteRecvUniqueTotal = getField("byteRecvUniqueTotal", 0L),
-            pktSentUnique = getField("pktSentUnique", 0L),
-            pktRecvUnique = getField("pktRecvUnique", 0L),
-            byteSentUnique = getField("byteSentUnique", 0L),
-            byteRecvUnique = getField("byteRecvUnique", 0L),
-            timestamp = System.currentTimeMillis()
+            msTimeStamp = stats.msTimeStamp,
+            pktSentTotal = stats.pktSentTotal,
+            pktRecvTotal = stats.pktRecvTotal,
+            pktSndLossTotal = stats.pktSndLossTotal.toLong(),
+            pktRcvLossTotal = stats.pktRcvLossTotal.toLong(),
+            pktRetransTotal = stats.pktRetransTotal.toLong(),
+            pktSentACKTotal = stats.pktSentACKTotal.toLong(),
+            pktRecvACKTotal = stats.pktRecvACKTotal.toLong(),
+            pktSentNAKTotal = stats.pktSentNAKTotal.toLong(),
+            pktRecvNAKTotal = stats.pktRecvNAKTotal.toLong(),
+            usSndDurationTotal = stats.usSndDurationTotal,
+            pktSndDropTotal = stats.pktSndDropTotal.toLong(),
+            pktRcvDropTotal = stats.pktRcvDropTotal.toLong(),
+            pktRcvUndecryptTotal = stats.pktRcvUndecryptTotal.toLong(),
+            byteSentTotal = stats.byteSentTotal,
+            byteRecvTotal = stats.byteRecvTotal,
+            byteRcvLossTotal = stats.byteRcvLossTotal,
+            byteRetransTotal = stats.byteRetransTotal,
+            byteSndDropTotal = stats.byteSndDropTotal,
+            byteRcvDropTotal = stats.byteRcvDropTotal,
+            byteRcvUndecryptTotal = stats.byteRcvUndecryptTotal,
+            pktSent = stats.pktSent,
+            pktRecv = stats.pktRecv,
+            pktSndLoss = stats.pktSndLoss.toLong(),
+            pktRcvLoss = stats.pktRcvLoss.toLong(),
+            pktRetrans = stats.pktRetrans.toLong(),
+            pktSentACK = stats.pktSentACK.toLong(),
+            pktRecvACK = stats.pktRecvACK.toLong(),
+            pktSentNAK = stats.pktSentNAK.toLong(),
+            pktRecvNAK = stats.pktRecvNAK.toLong(),
+            usSndDuration = stats.usSndDuration,
+            pktSndDrop = stats.pktSndDrop.toLong(),
+            pktRcvDrop = stats.pktRcvDrop.toLong(),
+            pktRcvUndecrypt = stats.pktRcvUndecrypt.toLong(),
+            byteSent = stats.byteSent,
+            byteRecv = stats.byteRecv,
+            byteRcvLoss = stats.byteRcvLoss,
+            byteRetrans = stats.byteRetrans,
+            byteSndDrop = stats.byteSndDrop,
+            byteRcvDrop = stats.byteRcvDrop,
+            byteRcvUndecrypt = stats.byteRcvUndecrypt
         )
     }
     
