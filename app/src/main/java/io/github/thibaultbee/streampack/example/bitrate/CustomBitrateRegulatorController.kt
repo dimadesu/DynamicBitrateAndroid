@@ -16,7 +16,8 @@ class CustomBitrateRegulatorController (
     endpoint: IEndpoint,
     bitrateRegulatorFactory: IBitrateRegulator.Factory,
     bitrateRegulatorConfig: BitrateRegulatorConfig = BitrateRegulatorConfig(),
-    delayTimeInMs: Long = 500
+    delayTimeInMs: Long = 500,
+    onStatsUpdate: ((Any) -> Unit)? = null
 ) : BitrateRegulatorController(
     audioEncoder,
     videoEncoder,
@@ -38,6 +39,11 @@ class CustomBitrateRegulatorController (
     /**
      * Scheduler for bitrate regulation
      */
+    /**
+     * Callback to share SRT stats with service/UI. Set this from your service.
+     */
+    var onStatsUpdate: ((Any) -> Unit)? = null
+
     private val scheduler = Scheduler(delayTimeInMs) {
         android.util.Log.d("CustomBitrateRegulatorController", "Scheduler tick: videoBitrate=${videoEncoder.bitrate}, audioBitrate=${audioEncoder?.bitrate ?: 0}")
         bitrateRegulator.update(
@@ -45,6 +51,8 @@ class CustomBitrateRegulatorController (
             videoEncoder.bitrate,
             audioEncoder?.bitrate ?: 0
         )
+        // Share stats with UI/service
+        onStatsUpdate?.invoke(endpoint.metrics)
     }
 
     override fun start() {
@@ -59,6 +67,7 @@ class CustomBitrateRegulatorController (
         private val bitrateRegulatorFactory: SrtBitrateRegulator.Factory = DefaultSrtBitrateRegulator.Factory(),
         private val bitrateRegulatorConfig: BitrateRegulatorConfig = BitrateRegulatorConfig(),
         private val delayTimeInMs: Long = 500
+    , private val onStatsUpdate: ((Any) -> Unit)? = null
     ) : BitrateRegulatorController.Factory() {
         override fun newBitrateRegulatorController(pipelineOutput: IEncodingPipelineOutput): CustomBitrateRegulatorController {
             require(pipelineOutput is IConfigurableVideoEncodingPipelineOutput) {
@@ -80,7 +89,8 @@ class CustomBitrateRegulatorController (
                 pipelineOutput.endpoint,
                 bitrateRegulatorFactory,
                 bitrateRegulatorConfig,
-                delayTimeInMs
+                delayTimeInMs,
+                onStatsUpdate
             )
         }
     }

@@ -77,7 +77,15 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Bitrate stats will appear here"
-        android:textColor="@android:color/black"
+        android:textColor="@android:color/black" />
+
+    <TextView
+        android:id="@+id/srtStatsTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="SRT stats will appear here"
+        android:textColor="@android:color/holo_blue_dark"
+        app:layout_constraintTop_toBottomOf="@id/bitrateStatsTextView"
         android:textSize="16sp"
         android:background="#DDDDDD"
         android:padding="8dp"

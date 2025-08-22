@@ -13,6 +13,7 @@ import android.widget.TextView
 
 class MainActivity : AppCompatActivity() {
     private var bitrateStatsReceiver: BroadcastReceiver? = null
+    private var srtStatsReceiver: BroadcastReceiver? = null
 
     private var currentBitrate: Int = 2000000 // Default value, update as needed
 
@@ -58,6 +59,18 @@ class MainActivity : AppCompatActivity() {
             }
         }
         registerReceiver(bitrateStatsReceiver, IntentFilter("io.github.thibaultbee.streampack.example.BITRATE_STATS"))
+
+        // Register receiver for SRT stats and display in UI
+        srtStatsReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: android.content.Intent?) {
+                if (intent?.action == "io.github.thibaultbee.streampack.example.SRT_STATS") {
+                    val stats = intent.getStringExtra("srtStats")
+                    // Display SRT stats in a TextView (add to your layout as needed)
+                    findViewById<TextView?>(R.id.srtStatsTextView)?.text = stats ?: "No SRT stats"
+                }
+            }
+        }
+        registerReceiver(srtStatsReceiver, IntentFilter("io.github.thibaultbee.streampack.example.SRT_STATS"))
     }
 
     private fun sendBitrateChange(newBitrate: Int) {
@@ -70,5 +83,6 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         bitrateStatsReceiver?.let { unregisterReceiver(it) }
+        srtStatsReceiver?.let { unregisterReceiver(it) }
     }
 }

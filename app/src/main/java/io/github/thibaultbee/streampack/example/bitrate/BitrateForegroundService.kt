@@ -78,7 +78,13 @@ class BitrateForegroundService : Service() {
                                     videoBitrateRange = android.util.Range(500_000, 10_000_000),
                                     audioBitrateRange = android.util.Range(128_000, 128_000)
                                 ),
-                                delayTimeInMs = 500L
+                                delayTimeInMs = 500L,
+                                onStatsUpdate = { stats ->
+                                    // Broadcast SRT stats to UI
+                                    val statsIntent = Intent("io.github.thibaultbee.streampack.example.SRT_STATS")
+                                    statsIntent.putExtra("srtStats", stats.toString())
+                                    sendBroadcast(statsIntent)
+                                }
                             )
                         )
                         streamer?.open(UriMediaDescriptor(streamUrl))
