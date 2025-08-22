@@ -10,22 +10,45 @@ import io.github.thibaultbee.streampack.core.regulator.IBitrateRegulator
 import io.github.thibaultbee.streampack.core.regulator.controllers.BitrateRegulatorController
 import io.github.thibaultbee.streampack.core.regulator.controllers.DummyBitrateRegulatorController
 import io.github.thibaultbee.streampack.core.regulator.BitrateRegulator
+import io.github.thibaultbee.streampack.core.elements.utils.Scheduler
 
 class CustomBitrateRegulatorController(
     audioEncoder: IEncoder?,
     videoEncoder: IEncoder,
     endpoint: IEndpoint,
     bitrateRegulatorConfig: BitrateRegulatorConfig = BitrateRegulatorConfig(),
-    delayTimeInMs: Long = 500
-) : DummyBitrateRegulatorController(
+    delayTimeInMs: Long = 500,
+    private val customFactory: IBitrateRegulator.Factory = CustomBitrateRegulator.Factory()
+) : BitrateRegulatorController(
     audioEncoder,
     videoEncoder,
     endpoint,
-    CustomBitrateRegulator.Factory(),
-    bitrateRegulatorConfig,
-    delayTimeInMs
+    customFactory,
+    bitrateRegulatorConfig
 ) {
     // You can add custom fields or override methods here if needed
+
+    private val bitrateRegulator: IBitrateRegulator = customFactory.newBitrateRegulator(
+        bitrateRegulatorConfig,
+        { videoEncoder?.bitrate = it },
+        { audioEncoder?.bitrate = it }
+    )
+
+    private val scheduler = Scheduler(delayTimeInMs) {
+        bitrateRegulator.update(
+            endpoint.metrics,
+            videoEncoder?.bitrate ?: 0,
+            audioEncoder?.bitrate ?: 0
+        )
+    }
+
+    override fun start() {
+        scheduler.start()
+    }
+
+    override fun stop() {
+        scheduler.stop()
+    }
 
     class Factory(
         private val bitrateRegulatorConfig: BitrateRegulatorConfig = BitrateRegulatorConfig(),
