@@ -71,7 +71,7 @@ class BitrateForegroundService : Service() {
                         streamer?.setAudioSource(io.github.thibaultbee.streampack.core.elements.sources.audio.audiorecord.MicrophoneSourceFactory())
                         // Add SRT bitrate regulator controller
                         streamer?.addBitrateRegulatorController(
-                            io.github.thibaultbee.streampack.ext.srt.regulator.controllers.DefaultSrtBitrateRegulatorController.Factory(
+                            CustomBitrateRegulatorController.Factory(
                                 bitrateRegulatorConfig = io.github.thibaultbee.streampack.core.configuration.BitrateRegulatorConfig(
                                     videoBitrateRange = android.util.Range(500_000, 10_000_000),
                                     audioBitrateRange = android.util.Range(128_000, 128_000)
