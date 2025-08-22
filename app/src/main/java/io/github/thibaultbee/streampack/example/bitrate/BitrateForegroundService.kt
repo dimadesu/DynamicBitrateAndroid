@@ -51,7 +51,6 @@ class BitrateForegroundService : Service() {
             "START_STREAM" -> {
                 serviceScope.launch {
                     try {
-                        // If streamer is null (first start or after release), create a new instance
                         if (streamer == null) {
                             streamer = SingleStreamer(this@BitrateForegroundService, withAudio = true, withVideo = true)
                             streamer?.setCameraId(defaultCameraId)
@@ -65,7 +64,8 @@ class BitrateForegroundService : Service() {
                             io.github.thibaultbee.streampack.core.streamers.single.VideoConfig(
                                 mimeType = android.media.MediaFormat.MIMETYPE_VIDEO_AVC,
                                 resolution = android.util.Size(1280, 720),
-                                fps = 25
+                                fps = 25,
+                                startBitrate = 2000000 // Default bitrate
                             )
                         )
                         streamer?.setAudioSource(io.github.thibaultbee.streampack.core.elements.sources.audio.audiorecord.MicrophoneSourceFactory())
@@ -87,6 +87,17 @@ class BitrateForegroundService : Service() {
                         Log.d("BitrateService", "Streaming stopped in foreground service and resources released")
                     } catch (e: Exception) {
                         Log.e("BitrateService", "Error stopping stream: ${e.message}", e)
+                    }
+                }
+            }
+            "SET_BITRATE" -> {
+                val newBitrate = intent?.getIntExtra("BITRATE", 2000000) ?: 2000000
+                serviceScope.launch {
+                    try {
+                        streamer?.videoEncoder?.bitrate = newBitrate
+                        Log.d("BitrateService", "Bitrate changed to $newBitrate")
+                    } catch (e: Exception) {
+                        Log.e("BitrateService", "Error changing bitrate: ${e.message}", e)
                     }
                 }
             }
