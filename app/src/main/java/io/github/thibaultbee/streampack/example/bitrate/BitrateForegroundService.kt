@@ -14,6 +14,7 @@ import io.github.thibaultbee.streampack.core.streamers.single.SingleStreamer
 import io.github.thibaultbee.streampack.core.interfaces.setCameraId
 import io.github.thibaultbee.streampack.core.elements.sources.video.camera.extensions.defaultCameraId
 import io.github.thibaultbee.streampack.core.configuration.mediadescriptor.UriMediaDescriptor
+import io.github.thibaultbee.streampack.ext.srt.regulator.CustomSrtBitrateRegulator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -72,6 +73,7 @@ class BitrateForegroundService : Service() {
                         // Add SRT bitrate regulator controller
                         streamer?.addBitrateRegulatorController(
                             CustomBitrateRegulatorController.Factory(
+                                bitrateRegulatorFactory = CustomSrtBitrateRegulator.Factory(),
                                 bitrateRegulatorConfig = io.github.thibaultbee.streampack.core.configuration.BitrateRegulatorConfig(
                                     videoBitrateRange = android.util.Range(500_000, 10_000_000),
                                     audioBitrateRange = android.util.Range(128_000, 128_000)
