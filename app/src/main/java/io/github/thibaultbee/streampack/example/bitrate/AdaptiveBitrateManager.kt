@@ -1,6 +1,7 @@
 package io.github.thibaultbee.streampack.example.bitrate
 
 import android.util.Log
+import io.github.thibaultbee.streampack.core.elements.endpoints.IEndpoint
 import io.github.thibaultbee.streampack.core.streamers.single.SingleStreamer
 import io.github.thibaultbee.streampack.core.streamers.single.VideoConfig
 import io.github.thibaultbee.streampack.core.streamers.dual.DualStreamer
@@ -78,7 +79,7 @@ class AdaptiveBitrateManager {
     /**
      * Start adaptive bitrate control
      */
-    fun start(srtSocket: Any? = null) {
+    fun start(srtSocket: IEndpoint? = null) {
         if (isEnabled) {
             Log.w(TAG, "Adaptive bitrate already started")
             return

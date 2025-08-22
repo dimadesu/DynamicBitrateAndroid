@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import io.github.thibaultbee.srtdroid.core.models.Stats
+import io.github.thibaultbee.streampack.core.elements.endpoints.IEndpoint
 
 /**
  * Network statistics monitor that would interface with the SRT library
@@ -42,21 +43,18 @@ class NetworkStatsMonitor {
      * Start monitoring SRT connection statistics
      * If srtSocket is a StreamPack streamer, use endpoint.metrics for real stats
      */
-    fun startMonitoring(srtSocket: Any? = null) {
+    fun startMonitoring(srtSocket: IEndpoint? = null) {
         Log.d(TAG, "Starting SRT statistics monitoring")
         monitoringJob?.cancel()
         monitoringJob = scope.launch {
             while (isActive) {
                 try {
                     val stats = try {
-                        if (srtSocket is io.github.thibaultbee.srtdroid.core.models.SrtSocket) {
-                            srtSocket.bstats(false)
-                        } else {
-                            Log.w(TAG, "srtSocket is not SrtSocket, cannot get stats directly")
-                            null
-                        }
+                        // If srtSocket is an endpoint with metrics property, use it
+                        val metrics = srtSocket?.metrics
+                        metrics as? io.github.thibaultbee.srtdroid.core.models.Stats
                     } catch (e: Exception) {
-                        Log.w(TAG, "Failed to get real SRT stats from metrics property", e)
+                        Log.w(TAG, "Failed to get real SRT stats from endpoint.metrics property", e)
                         null
                     }
                     if (stats != null) {
