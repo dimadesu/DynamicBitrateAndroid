@@ -95,7 +95,13 @@ class BitrateForegroundService : Service() {
                 serviceScope.launch {
                     try {
                         streamer?.videoEncoder?.bitrate = newBitrate
-                        Log.d("BitrateService", "Bitrate changed to $newBitrate")
+                        val actualBitrate = streamer?.videoEncoder?.bitrate
+                        Log.d("BitrateService", "Bitrate set to $newBitrate, encoder reports $actualBitrate")
+
+                        // Broadcast the updated bitrate to the UI
+                        val bitrateIntent = Intent("io.github.thibaultbee.streampack.example.BITRATE_STATS")
+                        bitrateIntent.putExtra("currentBitrate", actualBitrate ?: newBitrate)
+                        sendBroadcast(bitrateIntent)
                     } catch (e: Exception) {
                         Log.e("BitrateService", "Error changing bitrate: ${e.message}", e)
                     }

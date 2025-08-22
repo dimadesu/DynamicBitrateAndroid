@@ -31,6 +31,7 @@
             android:layout_height="wrap_content"
             android:text="Bitrate: 2000000"
             android:textSize="16sp"
+            android:textColor="@android:color/white"
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp" />
         <Button

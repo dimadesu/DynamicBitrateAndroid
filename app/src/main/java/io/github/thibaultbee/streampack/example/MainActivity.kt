@@ -47,10 +47,14 @@ class MainActivity : AppCompatActivity() {
             sendBitrateChange(currentBitrate)
         }
 
-        // Register receiver for bitrate stats (if needed for future)
+        // Register receiver for bitrate stats and update UI
         bitrateStatsReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: android.content.Intent?) {
-                // No longer used, but kept for future stats display
+                if (intent?.action == "io.github.thibaultbee.streampack.example.BITRATE_STATS") {
+                    val actualBitrate = intent.getIntExtra("currentBitrate", currentBitrate)
+                    currentBitrate = actualBitrate
+                    bitrateValueTextView?.text = "Bitrate: $actualBitrate"
+                }
             }
         }
         registerReceiver(bitrateStatsReceiver, IntentFilter("io.github.thibaultbee.streampack.example.BITRATE_STATS"))
