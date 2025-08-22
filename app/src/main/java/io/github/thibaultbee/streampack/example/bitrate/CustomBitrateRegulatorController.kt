@@ -39,6 +39,7 @@ class CustomBitrateRegulatorController (
      * Scheduler for bitrate regulation
      */
     private val scheduler = Scheduler(delayTimeInMs) {
+        android.util.Log.d("CustomBitrateRegulatorController", "Scheduler tick: videoBitrate=${videoEncoder.bitrate}, audioBitrate=${audioEncoder?.bitrate ?: 0}")
         bitrateRegulator.update(
             endpoint.metrics,
             videoEncoder.bitrate,
