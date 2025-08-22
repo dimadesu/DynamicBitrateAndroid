@@ -5,6 +5,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import io.github.thibaultbee.srtdroid.core.models.Stats
 
 /**
  * Network statistics monitor that would interface with the SRT library
@@ -19,8 +20,8 @@ class NetworkStatsMonitor {
     
     
     // Flow for statistics updates
-    private val _statsFlow = MutableSharedFlow<io.github.thibaultbee.srtdroid.core.models.Stats>(replay = 1)
-    val statsFlow: SharedFlow<io.github.thibaultbee.srtdroid.core.models.Stats> = _statsFlow.asSharedFlow()
+    private val _statsFlow = MutableSharedFlow<Stats>(replay = 1)
+    val statsFlow: SharedFlow<Stats> = _statsFlow.asSharedFlow()
     
     // Monitoring state
     private var monitoringJob: Job? = null
@@ -88,7 +89,7 @@ class NetworkStatsMonitor {
      * Check for connection timeout based on ACK reception
      * Implements the timeout logic from belacoder.c
      */
-    private fun checkConnectionTimeout(stats: io.github.thibaultbee.srtdroid.core.models.Stats) {
+    private fun checkConnectionTimeout(stats: Stats) {
         val currentTime = System.currentTimeMillis()
         val ackTimeout = 6000L // 6 seconds as in belacoder.c
         // Update last ACK timestamp if we received new ACKs
@@ -106,7 +107,7 @@ class NetworkStatsMonitor {
     /**
      * Get current connection quality assessment
      */
-    fun getConnectionQuality(stats: io.github.thibaultbee.srtdroid.core.models.Stats): ConnectionQuality {
+    fun getConnectionQuality(stats: Stats): ConnectionQuality {
         return when {
             stats.msRTT <= 100 && stats.pktSndLossTotal <= 1 -> ConnectionQuality.GOOD
             stats.msRTT <= 200 && stats.pktSndLossTotal <= 3 -> ConnectionQuality.FAIR
@@ -117,7 +118,7 @@ class NetworkStatsMonitor {
     /**
      * Generate a human-readable summary of connection statistics
      */
-    fun getStatsSummary(stats: io.github.thibaultbee.srtdroid.core.models.Stats): String {
+    fun getStatsSummary(stats: Stats): String {
         val quality = getConnectionQuality(stats)
         return "RTT: ${stats.msRTT}ms, Buffer: ${stats.pktSndBuf}B, " +
             "Throughput: ${"%.1f".format(stats.mbpsBandwidth)}Mbps, " +
