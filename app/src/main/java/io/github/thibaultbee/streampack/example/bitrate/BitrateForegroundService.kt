@@ -70,7 +70,6 @@ class BitrateForegroundService : Service() {
                             )
                         )
                         streamer?.setAudioSource(io.github.thibaultbee.streampack.core.elements.sources.audio.audiorecord.MicrophoneSourceFactory())
-                        // Add SRT bitrate regulator controller
                         streamer?.addBitrateRegulatorController(
                             CustomBitrateRegulatorController.Factory(
                                 bitrateRegulatorFactory = CustomSrtBitrateRegulator.Factory(),
@@ -112,7 +111,10 @@ class BitrateForegroundService : Service() {
                 val newBitrate = intent?.getIntExtra("BITRATE", 2000000) ?: 2000000
                 serviceScope.launch {
                     try {
-                        streamer?.videoEncoder?.bitrate = newBitrate
+                        // streamer?.videoEncoder?.bitrate = newBitrate
+                        streamer?.videoEncoder?.apply {
+                            bitrate = newBitrate
+                        }
                         val actualBitrate = streamer?.videoEncoder?.bitrate
                         Log.d("BitrateService", "Bitrate set to $newBitrate, encoder reports $actualBitrate")
 
